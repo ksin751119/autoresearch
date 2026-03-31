@@ -2,6 +2,33 @@
 
 Detailed protocol for the autoresearch iteration loop. SKILL.md has the summary; this file has the full rules.
 
+## Loop Structure
+
+The loop has two layers:
+
+- **Outer loop (iteration):** Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → repeat
+- **Inner loop (implement-evaluate):** Phase 3a → 3b → 3c → 3d → 3e → keep or rework
+
+```
+Phase 0: Precondition (once, before loop starts)
+Phase 1: Review
+Phase 2: Ideate
+
+Phase 3: Implement (inner loop, max attempts: 1 initial + Max-Rework reworks)
+  +-- 3a: Modify
+  +-- 3b: Commit
+  +-- 3c: Verify (mechanical metric — hard gate)
+  +-- 3d: Guard (safety net — hard gate)
+  +-- 3e: Evaluate (Evaluator subagent — quality gate)
+       -> pass: exit inner loop with "keep"
+       -> fail + rework remaining: revert, inject critique, go to 3a
+       -> fail + no rework left: revert, exit with "evaluator-rejected"
+
+Phase 4: Decide
+Phase 5: Log
+Phase 6: Repeat
+```
+
 ## Loop Modes
 
 Autoresearch supports two loop modes:
@@ -9,7 +36,7 @@ Autoresearch supports two loop modes:
 - **Unbounded (default):** Loop forever until manually interrupted (`Ctrl+C`)
 - **Bounded:** Loop exactly N times when `Iterations: N` is set in the inline config (or `--iterations N` flag for CLI/CI)
 
-In both modes, the **stop hook** is the mechanical enforcement layer. In bounded mode, the hook tracks the iteration counter and allows exit after N iterations. You do NOT need to track iterations yourself — complete each iteration (Phase 1→7), then stop. The hook decides whether to re-inject.
+In both modes, the **stop hook** is the mechanical enforcement layer. In bounded mode, the hook tracks the iteration counter and allows exit after N iterations. You do NOT need to track iterations yourself — complete each iteration (Phase 1→5), then stop. The hook decides whether to re-inject.
 
 ## Phase 0: Precondition Checks (before loop starts)
 
@@ -164,7 +191,7 @@ query_git_memory() {
   return 0
 }
 
-# === PHASE 6: Write to Git Memory ===
+# === PHASE 3b: Write to Git Memory ===
 # Commit becomes memory. Revert becomes "lesson learned."
 write_git_memory() {
   local scope="$1" description="$2"
@@ -252,7 +279,42 @@ Pick the NEXT change. **MUST consult git history and results log before deciding
 
 **Bounded mode consideration:** If remaining iterations are limited (<3 left), prioritize exploiting successes over exploration.
 
-## Phase 3: Modify (One Atomic Change)
+**Evaluator-rejected awareness:** If the results log shows the previous iteration was `evaluator-rejected`, read the Evaluator's critique from the log description. Use it to inform this iteration's approach — avoid the same problem. The Evaluator flagged a specific code-level issue; your next idea should address or avoid it.
+
+## Phase 3: Implement (Inner Loop)
+
+The inner loop runs Phase 3a → 3b → 3c → 3d → 3e. If any hard gate (3c Verify, 3d Guard) fails and cannot be fixed, the inner loop exits early. Phase 3e (Evaluate) provides a quality gate that can trigger rework.
+
+**Inner loop flow:**
+
+```
+attempt = 0
+max_rework = Max-Rework config value (default: 1)
+
+LOOP:
+  3a: Modify (use Phase 2 plan on attempt=0, or Evaluator critique on attempt>0)
+  3b: Commit
+  3c: Verify
+      -> crash: exit inner loop with "crash"
+      -> no-op: exit inner loop with "no-op"
+      -> hook-blocked: exit inner loop with "hook-blocked"
+      -> metric worse or same: safe_revert(), exit inner loop with "discard"
+      -> metric improved: continue to 3d
+  3d: Guard (if configured)
+      -> guard failed after 2 rework attempts: safe_revert(), exit inner loop with "discard"
+      -> guard passed (or no guard): continue to 3e
+  3e: Evaluate (if configured)
+      -> evaluator off: exit inner loop with "keep"
+      -> pass: exit inner loop with "keep"
+      -> fail AND attempt < max_rework: safe_revert(), increment attempt, go to 3a
+      -> fail AND attempt >= max_rework: safe_revert(), exit inner loop with "evaluator-rejected"
+```
+
+**Short-circuit rules:** Verify failure and Guard failure are hard gates — they exit the inner loop immediately (after rework attempts for Guard). The Evaluator is only reached if both Verify and Guard pass.
+
+### Phase 3a: Modify (One Atomic Change)
+
+On the first attempt (attempt=0), use the plan from Phase 2 (Ideate). On rework attempts (attempt>0), use the Evaluator's critique and suggestions to modify the approach while preserving the original intent.
 
 - Make ONE focused change to in-scope files
 - The change should be explainable in one sentence
@@ -375,7 +437,7 @@ Files changed: 12 (across api, db, frontend, config)
 → Too broad — split into focused iterations
 ```
 
-## Phase 4: Commit (Before Verification)
+### Phase 3b: Commit (Before Verification)
 
 **You MUST commit before running verification.** This enables clean rollback if the experiment fails.
 
@@ -417,7 +479,7 @@ git revert --abort && git reset --hard HEAD~1
 
 **IMPORTANT:** Prefer `git revert` over `git reset --hard` — revert preserves the experiment in history (so you can learn from it), while reset destroys it. Use `git reset --hard` only if revert produces merge conflicts.
 
-## Phase 5: Verify (Mechanical Only)
+### Phase 3c: Verify (Mechanical Only)
 
 Run the agreed-upon verification command. Capture output.
 
@@ -438,7 +500,7 @@ Run the agreed-upon verification command. Capture output.
 | **Lighthouse** | `npx lighthouse http://localhost:3000 --output=json \| jq '.categories.performance.score * 100'` | Score 0-100 | higher |
 | **Latency** | `wrk -t2 -c10 -d10s http://localhost:3000/api 2>&1 \| grep 'Avg Lat' \| awk '{print $2}'` | ms | lower |
 
-## Phase 5.1: Noise Handling (for Volatile Metrics)
+#### Noise Handling (for Volatile Metrics)
 
 Some metrics are inherently noisy — benchmark times, ML accuracy, Lighthouse scores. A single measurement can mislead. Use these strategies to prevent false keep/discard decisions.
 
@@ -472,7 +534,7 @@ Ignore improvements smaller than the noise floor:
 # Configuration:
 Min-Delta: 2.0   # only keep if improvement > 2%
 
-# Decision logic (extends Phase 6):
+# Decision logic (extends Phase 4):
 IF metric_improved AND delta > min_delta:
     STATUS = "keep"
 ELIF metric_improved AND delta <= min_delta:
@@ -540,7 +602,7 @@ IF metric_worse AND abs(delta) < noise_floor:
         LOG "NOISE: initial regression not confirmed on re-run"
 ```
 
-## Phase 5.5: Guard (Regression Check)
+### Phase 3d: Guard (Regression Check)
 
 If a **guard** command was defined during setup, run it after verification.
 
@@ -573,10 +635,99 @@ When the guard fails but the metric improved, the optimization idea may still be
 
 **Critical:** Guard/test files are read-only. The optimization must adapt to the tests, never the other way around. If after 2 rework attempts the optimization can't pass the guard, discard it and move on to a different idea.
 
-## Phase 6: Decide (No Ambiguity)
+**Interaction with Evaluator:** Guard rework and Evaluator rework have independent attempt counters. Guard rework (max 2) happens entirely within Phase 3d. If Guard passes after rework, proceed to Phase 3e (Evaluate). If Guard cannot pass after 2 rework attempts, exit inner loop with "discard" — Evaluator is never reached.
+
+### Phase 3e: Evaluate (Independent Review)
+
+If `Evaluator: off` is set in the config, skip this phase entirely — exit inner loop with "keep".
+
+Otherwise, spawn an independent Evaluator subagent using the Agent tool. The Evaluator has NO access to your context window — it only sees the structured input you provide. This separation is deliberate: it prevents self-evaluation bias.
+
+**Spawn the Evaluator subagent with this prompt:**
+
+~~~
+# Role
+You are an independent Evaluator. Your job is to critically review a code change.
+You are completely separate from the agent that produced this code — you did not
+participate in design or implementation. Your only goal is to find problems.
+
+# Context
+Goal: {goal}
+Scope: {scope}
+Iteration Intent: {ideate_description}
+Mechanical Metric: {metric_name} = {metric_value} (passed threshold)
+
+{if Evaluate field provided in config}
+## Priority Review Targets
+{evaluate_field}
+{/if}
+
+{if this is a rework attempt}
+## Previous Review Feedback
+{previous_critique}
+Verify whether this revision addresses the above issues.
+{/if}
+
+# Git Diff
+```diff
+{output of: git diff HEAD~1}
+```
+
+# Rules
+1. You MUST point to specific code lines in the diff. No vague critiques.
+2. The mechanical metric already passed — do not question the metric itself.
+   Focus on what the metric CANNOT cover.
+3. Default stance is skeptical, but do not reject for the sake of rejecting.
+4. If the change is simple and correct, pass it. Do not manufacture problems.
+
+# Review Dimensions
+1. Logical correctness — does the change implement the stated intent?
+2. Edge cases — are there unhandled boundary conditions?
+3. Metric authenticity — is the change gaming the metric without real improvement?
+4. Side effects — unintended impact outside scope?
+5. Simplicity — overly complex? simpler way to achieve the same?
+
+# Output Format (strict JSON, nothing else)
+{
+  "verdict": "pass" or "fail",
+  "critique": "specific issue description referencing code lines (required when fail, empty string when pass)",
+  "suggestions": ["actionable fix suggestion 1", "..."],
+  "risk_flags": ["potential concern even if passing", "..."]
+}
+~~~
+
+**Processing the Evaluator's response:**
+
+1. Parse the JSON output. If parsing fails, treat as "pass" (don't block on Evaluator errors).
+2. If `verdict == "pass"`:
+   - Store `risk_flags` (if any) for Phase 5 (Log).
+   - Exit inner loop with status "keep".
+3. If `verdict == "fail"` and `attempt < max_rework`:
+   - Run `safe_revert()` to undo the current commit.
+   - Store `critique` and `suggestions` for the next Phase 3a.
+   - Increment `attempt`.
+   - Go back to Phase 3a with the Evaluator's feedback as input.
+4. If `verdict == "fail"` and `attempt >= max_rework`:
+   - Run `safe_revert()` to undo the current commit.
+   - Exit inner loop with status "evaluator-rejected".
+   - Store the final `critique` for Phase 5 (Log).
+
+**Rework guidance for Phase 3a:**
+
+When re-entering Phase 3a after an Evaluator rejection, the agent should:
+- Address the specific critique (not rewrite from scratch)
+- Preserve the original intent from Phase 2 (Ideate)
+- The one-sentence description should include "(rework)" suffix
+- Commit message: `experiment(<scope>): rework — <original description> — address: <critique summary>`
+
+**Cost awareness:** Each Evaluator spawn costs tokens and adds latency. For simple, low-risk changes (e.g., single-line config tweaks), the Evaluator will typically pass immediately. The cost is justified for complex logic changes where self-evaluation bias is most likely.
+
+## Phase 4: Decide
+
+The inner loop (Phase 3) exits with one of these statuses: "keep", "discard", "crash", "no-op", "hook-blocked", or "evaluator-rejected". Phase 4 finalizes the decision.
 
 ```bash
-# Rollback function — used for all discard/crash decisions
+# Rollback function — used throughout Phase 3 and Phase 4
 safe_revert() {
   echo "Reverting: $(git log --oneline -1)"
 
@@ -593,41 +744,6 @@ safe_revert() {
   echo "✓ Reverted via reset (experiment removed from history)"
   return 0
 }
-
-# Usage in Phase 6 decision logic:
-# if STATUS == "discard" or STATUS == "crash": safe_revert
-```
-
-```
-IF metric_improved AND (no guard OR guard_passed):
-    STATUS = "keep"
-    # Do nothing — commit stays. Git history preserves this success.
-ELIF metric_improved AND guard_failed:
-    safe_revert()
-    # Rework the optimization (max 2 attempts)
-    FOR attempt IN 1..2:
-        Analyze guard output → rework implementation (NOT tests)
-        git add <modified-files> && git commit -m "experiment(<scope>): rework — <description>"
-        Re-run verify
-        IF metric_improved:
-            Re-run guard
-            IF guard_passed:
-                STATUS = "keep (reworked)"
-                BREAK
-        safe_revert()
-    IF still failing after 2 attempts:
-        STATUS = "discard"
-        REASON = "guard failed, could not rework optimization"
-ELIF metric_same_or_worse:
-    STATUS = "discard"
-    safe_revert()
-ELIF crashed:
-    # Attempt fix (max 3 tries)
-    IF fixable:
-        Fix → re-commit → re-verify → re-guard
-    ELSE:
-        STATUS = "crash"
-        safe_revert()
 ```
 
 **Why `git revert` instead of `git reset --hard`?**
@@ -636,24 +752,62 @@ ELIF crashed:
 - `git revert` is also safer in Claude Code — it's a non-destructive operation that doesn't trigger safety warnings.
 - Fallback: if `git revert` produces merge conflicts, use `git revert --abort` then `git reset --hard HEAD~1`.
 
-**Simplicity override:** If metric barely improved (+<0.1%) but change adds significant complexity, treat as "discard". If metric unchanged but code is simpler, treat as "keep".
+```
+IF exit_status == "keep":
+    STATUS = "keep"
+    # Commit stays. Git history preserves this success.
+    # If Evaluator returned risk_flags, store them for logging.
 
-## Phase 7: Log Results
+IF exit_status == "keep" AND evaluator rework happened:
+    STATUS = "keep (reworked)"
+    # The final version passed both metric and Evaluator.
 
-Append to results log (TSV format):
+IF exit_status == "discard":
+    STATUS = "discard"
+    # Already reverted in Phase 3c or 3d.
+
+IF exit_status == "evaluator-rejected":
+    STATUS = "evaluator-rejected"
+    # Already reverted in Phase 3e.
+    # Store Evaluator's final critique — Phase 2 should avoid this pattern next iteration.
+
+IF exit_status == "crash":
+    STATUS = "crash"
+    # Already handled crash recovery in Phase 3c.
+
+IF exit_status == "no-op":
+    STATUS = "no-op"
+    # Phase 3a produced no diff.
+
+IF exit_status == "hook-blocked":
+    STATUS = "hook-blocked"
+    # Pre-commit hook rejected the change.
+```
+
+**Simplicity override** (unchanged): If metric barely improved (+<0.1%) but change adds significant complexity, treat as "discard". If metric unchanged but code is simpler, treat as "keep".
+
+## Phase 5: Log Results
+
+Append to results log (TSV format). See `references/results-logging.md` for full protocol.
 
 ```
-iteration  commit   metric   status        description
-42         a1b2c3d  0.9821   keep          increase attention heads from 8 to 12
-43         -        0.9845   discard       switch optimizer to SGD
-44         -        0.0000   crash         double batch size (OOM)
-45         -        -        no-op         attempted to modify read-only config (no diff produced)
-46         -        -        hook-blocked  pre-commit lint hook rejected formatting in model.py
+iteration  commit   metric  delta  guard  eval     status               description
+42         a1b2c3d  0.9821  +0.01  pass   pass     keep                  increase attention heads
+43         -        0.9845  +0.02  pass   fail     evaluator-rejected    switch optimizer (evaluator: no error handling)
+44         -        0.0000  0.0    -      -        crash                 double batch size (OOM)
+45         -        -       -      -      -        no-op                 no diff produced
+46         -        -       -      -      -        hook-blocked          pre-commit lint hook rejected
+47         b2c3d4e  0.9830  +0.01  pass   pass(1)  keep (reworked)       add caching layer (1 rework)
+48         -        0.9835  +0.01  pass   off      keep                  tweak learning rate (evaluator off)
 ```
 
-**Valid statuses:** `keep`, `keep (reworked)`, `discard`, `crash`, `no-op`, `hook-blocked`
+**eval column values:** `pass`, `fail`, `pass(N)` (passed after N reworks), `-` (not reached — Verify/Guard failed first), `off` (Evaluator disabled)
 
-## Phase 8: Repeat
+**Valid statuses:** `keep`, `keep (reworked)`, `discard`, `crash`, `no-op`, `hook-blocked`, `evaluator-rejected`
+
+**Logging risk_flags:** If the Evaluator returned risk_flags on a "pass" verdict, append them to the description. Example: `"add caching layer [risk: cache invalidation not tested]"`
+
+## Phase 6: Repeat
 
 ### Unbounded Mode (default)
 
@@ -663,7 +817,7 @@ Go to Phase 1. **NEVER STOP. NEVER ASK IF YOU SHOULD CONTINUE.**
 
 **The stop hook controls bounded iteration counting.** You do NOT track iterations internally.
 
-After completing Phase 7 (Log), stop. The hook will either:
+After completing Phase 5 (Log), stop. The hook will either:
 - **Re-inject the prompt** (iterations remaining) — you start the next iteration from Phase 1
 - **Allow exit** (N iterations reached) — the session ends
 
@@ -673,21 +827,22 @@ The system message from the hook shows your current iteration: `🔬 Autoresearc
 ```
 === Autoresearch Complete ===
 Baseline: {baseline} → Final: {current} ({delta})
-Keeps: X | Discards: Y | Crashes: Z | Skipped: W (no-ops + hook-blocked)
+Keeps: X | Discards: Y | Crashes: Z | Eval-Rejected: R | Skipped: W (no-ops + hook-blocked)
 Best iteration: #{n} — {description}
 ```
 
 **How to know it's the last iteration:** The system message shows `iteration N/N`. Complete the iteration normally, print the summary, then stop.
 
-### When Stuck (>5 consecutive discards)
+### When Stuck (>5 consecutive discards or evaluator-rejected)
 
 Applies to both modes:
 1. Re-read ALL in-scope files from scratch
 2. Re-read the original goal/direction
 3. Review entire results log for patterns
-4. Try combining 2-3 previously successful changes
-5. Try the OPPOSITE of what hasn't been working
-6. Try a radical architectural change
+4. If evaluator-rejected: re-read ALL evaluator critiques — find the common pattern
+5. Try combining 2-3 previously successful changes
+6. Try the OPPOSITE of what hasn't been working
+7. Try a radical architectural change
 
 ## Crash Recovery
 
