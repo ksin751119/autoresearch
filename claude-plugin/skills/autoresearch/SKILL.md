@@ -518,6 +518,9 @@ If the user provides **all 5 required fields** (Goal, Scope, Metric, Direction, 
 | 5 | Verify | "What command produces the metric?" | Detected commands from tooling |
 | 6 | Guard (optional) | "Any command that must ALWAYS pass? (prevents regressions)" | Detected commands / "Skip — no guard" |
 | 7 | Iterations (optional) | "How many iterations? (default: unlimited)" | "Unlimited" / "10" / "25" / "50" |
+| 8 | Evaluator (optional) | "Evaluator is enabled by default. Set to 'off' to disable?" | "on" (default) / "off" |
+| 9 | Evaluate (optional) | "Evaluator is enabled. Want to specify review focus areas? (Press Enter to skip — will auto-derive from Goal + Scope)" | Auto-derived / user text |
+| 10 | Max-Rework (optional) | "Max rework attempts when Evaluator rejects? (default: 2)" | "2" |
 
 **Skip questions for fields already provided inline.** Only ask what's missing.
 
@@ -527,13 +530,16 @@ After ALL fields are collected (whether inline or interactive), you MUST display
 
 ```
 Configuration Summary:
-  Goal:       <value>
-  Scope:      <value>
-  Metric:     <value>
-  Direction:  <value>
-  Verify:     <value>
-  Guard:      <value or "none">
-  Iterations: <value or "unlimited">
+  Goal:        <value>
+  Scope:       <value>
+  Metric:      <value>
+  Direction:   <value>
+  Verify:      <value>
+  Guard:       <value or "none">
+  Evaluator:   <on or off>
+  Evaluate:    <value or "(auto-derived)">
+  Max-Rework:  <value or "2">
+  Iterations:  <value or "unlimited">
 
 Ready to launch? [Launch / Edit / Cancel]
 ```
@@ -553,6 +559,8 @@ After user confirms, run `validate-config.sh` to verify:
 4. Scope glob matches at least 1 file
 5. Verify command dry-run succeeds and outputs a number
 6. Guard command dry-run succeeds (if set)
+7. Evaluator is exactly "on" or "off"
+8. Max-Rework is a non-negative integer
 
 If validation fails → show the error, ask user to fix the failing field, re-validate.
 
@@ -571,21 +579,19 @@ Read `references/autonomous-loop-protocol.md` for full protocol details.
 ```
 LOOP (FOREVER or N times):
   1. Review: Read current state + git history + results log
-  2. Ideate: Pick next change based on goal, past results, what hasn't been tried
-  3. Modify: Make ONE focused change to in-scope files
-  4. Commit: Git commit the change (before verification)
-  5. Verify: Run the mechanical metric (tests, build, benchmark, etc.)
-  6. Guard: If guard is set, run the guard command
-  7. Decide:
-     - IMPROVED + guard passed (or no guard) → Keep commit, log "keep", advance
-     - IMPROVED + guard FAILED → Revert, then try to rework the optimization
-       (max 2 attempts) so it improves the metric WITHOUT breaking the guard.
-       Never modify guard/test files — adapt the implementation instead.
-       If still failing → log "discard (guard failed)" and move on
-     - SAME/WORSE → Git revert, log "discard"
-     - CRASHED → Try to fix (max 3 attempts), else log "crash" and move on
-  8. Log: Record result in results log
-  9. Repeat: Go to step 1.
+  2. Ideate: Pick next change based on goal, past results, evaluator feedback
+  3. Implement (inner loop):
+     3a. Modify: Make ONE focused change to in-scope files
+     3b. Commit: Git commit the change (before verification)
+     3c. Verify: Run the mechanical metric — fail → revert, exit with "discard"
+     3d. Guard: If guard is set, run the guard — fail → Guard rework or exit with "discard"
+     3e. Evaluate: If Evaluator on, spawn Evaluator subagent
+         - pass → exit with "keep"
+         - fail + rework remaining → revert, feed critique back, go to 3a
+         - fail + max rework reached → revert, exit with "evaluator-rejected"
+  4. Decide: Finalize keep/discard/evaluator-rejected/crash/no-op
+  5. Log: Record result in results log (with eval column)
+  6. Repeat: Go to step 1.
      - If unbounded: NEVER STOP. NEVER ASK "should I continue?"
      - If bounded (N): Stop after N iterations, print final summary
 ```
@@ -626,15 +632,16 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 1. **Loop until done** — Unbounded: loop until interrupted. Bounded: loop N times then summarize.
 2. **Read before write** — Always understand full context before modifying
 3. **One change per iteration** — Atomic changes. If it breaks, you know exactly why
-4. **Mechanical verification only** — No subjective "looks good". Use metrics
+4. **Mechanical verification + independent evaluation** — Metrics are the hard gate. Evaluator subagent challenges what metrics can't catch.
 5. **Automatic rollback** — Failed changes revert instantly. No debates
 6. **Simplicity wins** — Equal results + less code = KEEP. Tiny improvement + ugly complexity = DISCARD
 7. **Git is memory** — Every experiment committed with `experiment:` prefix. Use `git revert` (not `git reset --hard`) for rollbacks so failed experiments remain visible in history. Agent MUST read `git log` and `git diff` of kept commits to learn patterns before each iteration
 8. **When stuck, think harder** — Re-read files, re-read goal, combine near-misses, try radical changes. Don't ask for help unless truly blocked by missing access/permissions
+9. **Separate generation from evaluation** — You write the code, a separate Evaluator subagent reviews it. Don't evaluate your own work — self-evaluation bias is real. See core principles #8.
 
 ## Principles Reference
 
-See `references/core-principles.md` for the 7 generalizable principles from autoresearch.
+See `references/core-principles.md` for the 8 generalizable principles from autoresearch.
 
 ## Adapting to Different Domains
 
