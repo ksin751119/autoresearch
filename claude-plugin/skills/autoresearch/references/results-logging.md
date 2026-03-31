@@ -24,7 +24,7 @@ echo -e "0\t${COMMIT}\t${BASELINE}\t0.0\tpass\t-\tbaseline\tinitial state — co
 
 ## Logging Function
 
-Called at Phase 7 of every iteration after the keep/discard/crash decision:
+Called at Phase 5 of every iteration after the keep/discard/crash decision:
 
 ```bash
 # Function: log_iteration

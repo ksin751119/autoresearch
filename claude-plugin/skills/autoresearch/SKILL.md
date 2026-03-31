@@ -1,7 +1,7 @@
 ---
 name: autoresearch
 description: Autonomous Goal-directed Iteration. Apply Karpathy's autoresearch principles to ANY task. Loops autonomously — modify, verify, keep/discard, repeat. Supports bounded iteration via Iterations: N inline config.
-version: 1.9.0
+version: 2.0.0
 ---
 
 # Claude Autoresearch — Autonomous Goal-directed Iteration
@@ -613,8 +613,8 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 
 - **You cannot exit the loop by stopping.** The hook will restart you.
 - **You do not need to ask "should I continue?"** — the hook handles continuation.
-- **In bounded mode, do NOT track iterations yourself.** Complete Phase 1-7, then stop. The hook counts iterations and decides whether to continue or allow exit. The system message shows `iteration X/N` so you know where you are.
-- **Focus on the current iteration only.** Do Phase 1-7, log results, then stop.
+- **In bounded mode, do NOT track iterations yourself.** Complete Phase 1-6, then stop. The hook counts iterations and decides whether to continue or allow exit. The system message shows `iteration X/N` so you know where you are.
+- **Focus on the current iteration only.** Do Phase 1-6, log results, then stop.
 - **If truly blocked** (missing permissions, broken environment), output a clear error message. The user can run `/autoresearch:cancel` to stop the loop.
 
 ### State File Location
