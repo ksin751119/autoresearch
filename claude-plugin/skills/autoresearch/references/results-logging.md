@@ -9,7 +9,7 @@ Autoresearch creates the log automatically at Phase 0 (baseline). The agent runs
 ```bash
 # 1. Create log file with metric direction and header
 echo "# metric_direction: higher_is_better" > autoresearch-results.tsv
-echo -e "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription" >> autoresearch-results.tsv
+echo -e "iteration\tcommit\tmetric\tdelta\tguard\teval\tstatus\tdescription" >> autoresearch-results.tsv
 
 # 2. Add to .gitignore (log is local, not committed)
 echo "autoresearch-results.tsv" >> .gitignore
@@ -19,7 +19,7 @@ BASELINE=$(npx jest --coverage 2>&1 | grep 'All files' | awk '{print $4}')
 
 # 4. Record baseline as iteration 0
 COMMIT=$(git rev-parse --short HEAD)
-echo -e "0\t${COMMIT}\t${BASELINE}\t0.0\tpass\tbaseline\tinitial state — coverage ${BASELINE}%" >> autoresearch-results.tsv
+echo -e "0\t${COMMIT}\t${BASELINE}\t0.0\tpass\t-\tbaseline\tinitial state — coverage ${BASELINE}%" >> autoresearch-results.tsv
 ```
 
 ## Logging Function
@@ -29,17 +29,19 @@ Called at Phase 7 of every iteration after the keep/discard/crash decision:
 ```bash
 # Function: log_iteration
 log_iteration() {
-  local iteration=$1 commit=$2 metric=$3 delta=$4 guard=$5 status=$6 description=$7
-  echo -e "${iteration}\t${commit}\t${metric}\t${delta}\t${guard}\t${status}\t${description}" \
+  local iteration=$1 commit=$2 metric=$3 delta=$4 guard=$5 eval=$6 status=$7 description=$8
+  echo -e "${iteration}\t${commit}\t${metric}\t${delta}\t${guard}\t${eval}\t${status}\t${description}" \
     >> autoresearch-results.tsv
 }
 
 # Usage examples:
-log_iteration 1 "b2c3d4e" "87.1" "+1.9" "pass" "keep" "add tests for auth middleware"
-log_iteration 2 "-" "86.5" "-0.6" "-" "discard" "refactor test helpers (broke 2 tests)"
-log_iteration 3 "-" "0.0" "0.0" "-" "crash" "add integration tests (DB connection failed)"
-log_iteration 4 "-" "-" "-" "-" "no-op" "attempted to modify read-only config"
-log_iteration 5 "-" "-" "-" "-" "hook-blocked" "pre-commit lint rejected formatting"
+log_iteration 1 "b2c3d4e" "87.1" "+1.9" "pass" "pass" "keep" "add tests for auth middleware"
+log_iteration 2 "-" "86.5" "-0.6" "-" "-" "discard" "refactor test helpers (broke 2 tests)"
+log_iteration 3 "-" "0.0" "0.0" "-" "-" "crash" "add integration tests (DB connection failed)"
+log_iteration 4 "-" "-" "-" "-" "-" "no-op" "attempted to modify read-only config"
+log_iteration 5 "-" "-" "-" "-" "-" "hook-blocked" "pre-commit lint rejected formatting"
+log_iteration 6 "c3d4e5f" "88.3" "+1.2" "pass" "fail" "evaluator-rejected" "switch to greedy algorithm"
+log_iteration 7 "d4e5f6g" "89.0" "+0.7" "pass" "pass(1)" "keep" "optimize connection pool (1 rework)"
 ```
 
 ## Reading & Using the Log
@@ -68,11 +70,12 @@ grep 'keep' autoresearch-results.tsv | awk -F'\t' '{print $7}'
 Where logging fits in the loop lifecycle:
 
 ```
-Phase 0 (Setup):    → CREATE log file, record baseline (iteration 0)
-Phase 1 (Review):   → READ last 10-20 log entries for pattern recognition
-Phase 3-6 (Loop):   → Modify, Commit, Verify, Decide
-Phase 7 (Log):      → APPEND new row after keep/discard/crash decision
-Phase 8 (Repeat):   → Back to Phase 1 (reads updated log)
+Phase 0 (Setup):         → CREATE log file, record baseline (iteration 0)
+Phase 1 (Review):        → READ last 10-20 log entries for pattern recognition
+Phase 3 (Implement):     → Inner loop: Modify, Commit, Verify, Guard, Evaluate
+Phase 4 (Decide):        → Keep/Discard/Evaluator-rejected decision
+Phase 5 (Log):           → APPEND new row after decision
+Phase 6 (Repeat):        → Back to Phase 1 (reads updated log)
 ```
 
 Complete end-to-end example:
@@ -98,7 +101,7 @@ Guard: npm run typecheck
 Create `autoresearch-results.tsv` in the working directory (gitignored):
 
 ```tsv
-iteration	commit	metric	delta	guard	status	description
+iteration	commit	metric	delta	guard	eval	status	description
 ```
 
 ### Columns
@@ -110,20 +113,22 @@ iteration	commit	metric	delta	guard	status	description
 | metric | float | Measured value from verification |
 | delta | float | Change from previous best (negative = improved for "lower is better") |
 | guard | enum | `pass`, `fail`, or `-` (no guard configured) |
-| status | enum | `baseline`, `keep`, `keep (reworked)`, `discard`, `crash`, `no-op`, `hook-blocked` |
+| eval | enum | `pass`, `fail`, `pass(N)` (passed after N reworks), `-` (not reached), `off` (Evaluator disabled) |
+| status | enum | `baseline`, `keep`, `keep (reworked)`, `discard`, `crash`, `no-op`, `hook-blocked`, `evaluator-rejected` |
 | description | string | One-sentence description of what was tried |
 
 ### Example
 
 ```tsv
-iteration	commit	metric	delta	guard	status	description
-0	a1b2c3d	85.2	0.0	pass	baseline	initial state — test coverage 85.2%
-1	b2c3d4e	87.1	+1.9	pass	keep	add tests for auth middleware edge cases
-2	-	86.5	-0.6	-	discard	refactor test helpers (broke 2 tests)
-3	-	0.0	0.0	-	crash	add integration tests (DB connection failed)
-4	-	88.9	+1.8	fail	discard	inline hot-path functions (guard: 3 tests broke)
-5	c3d4e5f	88.3	+1.2	pass	keep	add tests for error handling in API routes
-6	d4e5f6g	89.0	+0.7	pass	keep	add boundary value tests for validators
+iteration	commit	metric	delta	guard	eval	status	description
+0	a1b2c3d	85.2	0.0	pass	-	baseline	initial state — test coverage 85.2%
+1	b2c3d4e	87.1	+1.9	pass	pass	keep	add tests for auth middleware edge cases
+2	-	86.5	-0.6	-	-	discard	refactor test helpers (broke 2 tests)
+3	-	0.0	0.0	-	-	crash	add integration tests (DB connection failed)
+4	-	88.9	+1.8	fail	-	discard	inline hot-path functions (guard: 3 tests broke)
+5	c3d4e5f	88.3	+1.2	pass	pass	keep	add tests for error handling in API routes
+6	d4e5f6g	89.5	+1.2	pass	fail	evaluator-rejected	switch to greedy algorithm (evaluator: edge case not handled)
+7	e5f6g7h	89.0	+0.7	pass	pass(1)	keep	optimize connection pool (1 rework)
 ```
 
 **Note:** When guard fails, the metric may have improved but the change is still discarded. The guard column makes this visible in the log so the agent can learn which optimization approaches tend to cause regressions.
