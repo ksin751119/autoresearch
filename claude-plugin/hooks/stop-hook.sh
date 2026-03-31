@@ -61,7 +61,7 @@ fi
 # ─── Check max iterations ────────────────────────────────────────
 NEXT_ITERATION=$((ITERATION + 1))
 
-if [[ "$MAX_ITERATIONS" -gt 0 ]] && [[ "$NEXT_ITERATION" -gt "$MAX_ITERATIONS" ]]; then
+if [[ "$MAX_ITERATIONS" -gt 0 ]] && [[ "$NEXT_ITERATION" -ge "$MAX_ITERATIONS" ]]; then
   echo "Autoresearch loop complete: reached max iterations ($MAX_ITERATIONS)." >&2
   rm -f "$STATE_FILE"
   exit 0
