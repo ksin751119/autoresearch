@@ -1,7 +1,7 @@
 ---
 name: autoresearch
 description: Autonomous Goal-directed Iteration. Apply Karpathy's autoresearch principles to ANY task. Loops autonomously — modify, verify, keep/discard, repeat. Supports bounded iteration via Iterations: N inline config.
-version: 1.8.2
+version: 1.9.0
 ---
 
 # Claude Autoresearch — Autonomous Goal-directed Iteration
@@ -493,46 +493,76 @@ After N iterations Claude stops and prints a final summary with baseline → cur
 
 ## Setup Phase (Do Once)
 
-**If the user provides Goal, Scope, Metric, and Verify inline** → extract them and proceed to step 5.
+### Quick Path (all fields provided inline)
 
-**CRITICAL: If ANY critical field is missing (Goal, Scope, Metric, Direction, or Verify), you MUST use `AskUserQuestion` to collect them interactively. DO NOT proceed to The Loop or any execution phase without completing this setup. This is a BLOCKING prerequisite.**
+If the user provides **all 5 required fields** (Goal, Scope, Metric, Direction, Verify) inline → extract them, run `validate-config.sh`, then proceed to "Setup Steps" below.
 
-### Interactive Setup (when invoked without full config)
+### Interactive Setup (when any required field is missing)
 
-Scan the codebase first for smart defaults, then ask ALL questions in batched `AskUserQuestion` calls (max 4 per call). This gives users full clarity upfront.
+**CRITICAL: If ANY of the 5 required fields is missing (Goal, Scope, Metric, Direction, or Verify), you MUST collect them interactively. This is a BLOCKING prerequisite.**
 
-**Batch 1 — Core config (4 questions in one call):**
+**Before asking questions:** Scan the project to detect:
+- Test framework (jest, vitest, pytest, go test, etc.)
+- File structure (src/, lib/, content/, etc.)
+- Build tools (npm, cargo, go, etc.)
+- Existing test coverage or metric commands
 
-Use a SINGLE `AskUserQuestion` call with these 4 questions:
+**Then ask each missing field one at a time via `AskUserQuestion`:**
 
-| # | Header | Question | Options (smart defaults from codebase scan) |
-|---|--------|----------|----------------------------------------------|
-| 1 | `Goal` | "What do you want to improve?" | "Test coverage (higher)", "Bundle size (lower)", "Performance (faster)", "Code quality (fewer errors)" |
-| 2 | `Scope` | "Which files can autoresearch modify?" | Suggested globs from project structure (e.g. "src/**/*.ts", "content/**/*.md") |
-| 3 | `Metric` | "What number tells you if it got better? (must be a command output, not subjective)" | Detected options: "coverage % (higher)", "bundle size KB (lower)", "error count (lower)", "test pass count (higher)" |
-| 4 | `Direction` | "Higher or lower is better?" | "Higher is better", "Lower is better" |
+| Order | Field | Question | Smart Defaults |
+|-------|-------|----------|----------------|
+| 1 | Goal | "What do you want to improve?" | Based on project context |
+| 2 | Scope | "Which files can autoresearch modify?" | Detected globs from project structure |
+| 3 | Metric | "What number tells you if it got better? (must be a command output)" | Detected from test framework |
+| 4 | Direction | "Higher or lower is better?" | "Higher is better" / "Lower is better" |
+| 5 | Verify | "What command produces the metric?" | Detected commands from tooling |
+| 6 | Guard (optional) | "Any command that must ALWAYS pass? (prevents regressions)" | Detected commands / "Skip — no guard" |
+| 7 | Iterations (optional) | "How many iterations? (default: unlimited)" | "Unlimited" / "10" / "25" / "50" |
 
-**Batch 2 — Verify + Guard + Launch (3 questions in one call):**
+**Skip questions for fields already provided inline.** Only ask what's missing.
 
-| # | Header | Question | Options |
-|---|--------|----------|---------|
-| 5 | `Verify` | "What command produces the metric? (I'll dry-run it to confirm)" | Suggested commands from detected tooling |
-| 6 | `Guard` | "Any command that must ALWAYS pass? (prevents regressions)" | "npm test", "tsc --noEmit", "npm run build", "Skip — no guard" |
-| 7 | `Launch` | "Ready to go?" | "Launch (unlimited)", "Launch with iteration limit", "Edit config", "Cancel" |
+### MANDATORY: Configuration Confirmation
 
-**After Batch 2:** Dry-run the verify command. If it fails, ask user to fix or choose a different command. If it passes, proceed with launch choice.
+After ALL fields are collected (whether inline or interactive), you MUST display the complete config and ask for confirmation:
 
-**IMPORTANT:** You MUST call `AskUserQuestion` with batched questions — never ask one at a time, and never skip this step. Users should see all config choices together for full context. DO NOT proceed to Setup Steps or The Loop without completing interactive setup.
+```
+Configuration Summary:
+  Goal:       <value>
+  Scope:      <value>
+  Metric:     <value>
+  Direction:  <value>
+  Verify:     <value>
+  Guard:      <value or "none">
+  Iterations: <value or "unlimited">
 
-### Setup Steps (after config is complete)
+Ready to launch? [Launch / Edit / Cancel]
+```
+
+- **Launch** → proceed to validation and loop
+- **Edit** → ask which field to change, re-collect that field, show summary again
+- **Cancel** → stop, do not enter loop
+
+**YOU MUST NOT skip this confirmation step. Even if all fields were provided inline, show the summary and confirm.**
+
+### Mechanical Validation
+
+After user confirms, run `validate-config.sh` to verify:
+1. All 5 required fields are non-empty
+2. Direction is exactly "higher" or "lower"
+3. Inside a git repository, not detached HEAD
+4. Scope glob matches at least 1 file
+5. Verify command dry-run succeeds and outputs a number
+6. Guard command dry-run succeeds (if set)
+
+If validation fails → show the error, ask user to fix the failing field, re-validate.
+
+### Setup Steps (after validation passes)
 
 1. **Read all in-scope files** for full context before any modification
-2. **Define the goal** — extracted from user input or inline config
-3. **Define scope constraints** — validated file globs
-4. **Define guard (optional)** — regression prevention command
-5. **Create a results log** — Track every iteration (see `references/results-logging.md`)
-6. **Establish baseline** — Run verification on current state AND guard (if set). Record as iteration #0
-7. **Confirm and go** — Show user the setup, get confirmation, then BEGIN THE LOOP
+2. **Create a results log** — Track every iteration (see `references/results-logging.md`)
+3. **Establish baseline** — Run verification on current state AND guard (if set). Record as iteration #0
+4. **Activate Stop Hook** — Run `setup-loop.sh` to create loop state file
+5. **BEGIN THE LOOP**
 
 ## The Loop
 
