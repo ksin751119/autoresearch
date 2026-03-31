@@ -1,0 +1,15 @@
+{
+  "description": "Autoresearch stop hook — prevents Claude from exiting during autonomous loop iterations",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
