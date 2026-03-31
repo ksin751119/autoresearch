@@ -560,6 +560,37 @@ LOOP (FOREVER or N times):
      - If bounded (N): Stop after N iterations, print final summary
 ```
 
+## Stop Hook (Mechanical Loop Enforcement)
+
+Autoresearch uses a **Stop hook** to mechanically prevent the session from ending during the autonomous loop. This is NOT a prompt instruction — it is a runtime mechanism that intercepts exit attempts.
+
+### How It Works
+
+1. After interactive setup completes, `setup-loop.sh` creates `.claude/autoresearch-loop.local.md`
+2. This state file activates the Stop hook
+3. Every time you try to exit, the hook:
+   - Reads the state file
+   - Checks if max iterations reached → if yes, allows exit
+   - Otherwise → blocks exit and re-injects the loop prompt
+   - Increments the iteration counter
+
+### What This Means For You
+
+- **You cannot exit the loop by stopping.** The hook will restart you.
+- **You do not need to ask "should I continue?"** — the hook handles continuation.
+- **Focus on the current iteration only.** Do Phase 1-8, then let the hook handle the restart.
+- **If truly blocked** (missing permissions, broken environment), output a clear error message. The user can run `/autoresearch:cancel` to stop the loop.
+
+### State File Location
+
+`.claude/autoresearch-loop.local.md` — contains YAML frontmatter with loop config (goal, scope, metric, verify, guard, iteration count) and the re-injection prompt.
+
+### Stopping the Loop
+
+- `/autoresearch:cancel` — removes state file, loop stops on next exit
+- Max iterations reached — hook auto-removes state file
+- User manually deletes `.claude/autoresearch-loop.local.md`
+
 ## Critical Rules
 
 1. **Loop until done** — Unbounded: loop until interrupted. Bounded: loop N times then summarize.
