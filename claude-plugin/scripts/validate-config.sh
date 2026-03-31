@@ -4,7 +4,7 @@ set -uo pipefail
 # ─── Usage ────────────────────────────────────────────────────────
 usage() {
   cat <<'USAGE'
-Usage: validate-config.sh --goal GOAL --scope SCOPE --metric METRIC --direction DIR --verify CMD [--guard CMD]
+Usage: validate-config.sh --goal GOAL --scope SCOPE --metric METRIC --direction DIR --verify CMD [--guard CMD] [--evaluator on|off] [--max-rework N]
 
 Validates autoresearch config before loop activation.
 
@@ -15,6 +15,8 @@ Checks:
   4. Scope glob resolves to at least 1 file
   5. Verify command dry-run succeeds and outputs a number
   6. Guard command dry-run succeeds (if provided)
+  7. Evaluator is "on" or "off"
+  8. Max-Rework is a non-negative integer
 
 Exit 0 = all checks passed. Exit 1 = validation failed.
 USAGE
@@ -22,7 +24,7 @@ USAGE
 }
 
 # ─── Argument Parsing ─────────────────────────────────────────────
-GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD=""
+GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD="" EVALUATOR="on" MAX_REWORK="2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -31,8 +33,10 @@ while [[ $# -gt 0 ]]; do
     --metric)    METRIC="$2";    shift 2 ;;
     --direction) DIRECTION="$2"; shift 2 ;;
     --verify)    VERIFY="$2";    shift 2 ;;
-    --guard)     GUARD="$2";     shift 2 ;;
-    -h|--help)   usage ;;
+    --guard)      GUARD="$2";      shift 2 ;;
+    --evaluator)  EVALUATOR="$2";  shift 2 ;;
+    --max-rework) MAX_REWORK="$2"; shift 2 ;;
+    -h|--help)    usage ;;
     *)           echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -155,6 +159,24 @@ if [[ -n "$GUARD" ]]; then
 
   echo "  Guard command succeeded (exit 0)."
 fi
+
+# ─── Check 7: Evaluator value ───────────────────────────────────
+echo "Checking evaluator setting..."
+if [[ "$EVALUATOR" != "on" ]] && [[ "$EVALUATOR" != "off" ]]; then
+  fail "Evaluator must be 'on' or 'off', got: '$EVALUATOR'"
+  echo "VALIDATION FAILED." >&2
+  exit 1
+fi
+echo "  Evaluator: $EVALUATOR"
+
+# ─── Check 8: Max-Rework value ──────────────────────────────────
+echo "Checking max-rework setting..."
+if ! [[ "$MAX_REWORK" =~ ^[0-9]+$ ]]; then
+  fail "Max-Rework must be a non-negative integer, got: '$MAX_REWORK'"
+  echo "VALIDATION FAILED." >&2
+  exit 1
+fi
+echo "  Max-Rework: $MAX_REWORK"
 
 # ─── Result ───────────────────────────────────────────────────────
 echo ""
