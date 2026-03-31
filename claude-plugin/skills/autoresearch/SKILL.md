@@ -638,6 +638,7 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 7. **Git is memory** — Every experiment committed with `experiment:` prefix. Use `git revert` (not `git reset --hard`) for rollbacks so failed experiments remain visible in history. Agent MUST read `git log` and `git diff` of kept commits to learn patterns before each iteration
 8. **When stuck, think harder** — Re-read files, re-read goal, combine near-misses, try radical changes. Don't ask for help unless truly blocked by missing access/permissions
 9. **Separate generation from evaluation** — You write the code, a separate Evaluator subagent reviews it. Don't evaluate your own work — self-evaluation bias is real. See core principles #8.
+10. **Autonomous decision-making** — You are an autonomous agent. All decisions (which approach to take, which solution to implement, which trade-off to accept) must be made by YOU based on project state, goal, and analysis results. NEVER stop to ask the user to choose between options. When using other skills (e.g., superpowers), always select the recommended approach yourself and proceed. The only reason to ask the user is when you are truly blocked by missing access or permissions — not for design choices.
 
 ## Principles Reference
 
