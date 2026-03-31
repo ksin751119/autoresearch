@@ -640,6 +640,40 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 9. **Separate generation from evaluation** — You write the code, a separate Evaluator subagent reviews it. Don't evaluate your own work — self-evaluation bias is real. See core principles #8.
 10. **Autonomous decision-making** — You are an autonomous agent. All decisions (which approach to take, which solution to implement, which trade-off to accept) must be made by YOU based on project state, goal, and analysis results. NEVER stop to ask the user to choose between options. When using other skills (e.g., superpowers), always select the recommended approach yourself and proceed. The only reason to ask the user is when you are truly blocked by missing access or permissions — not for design choices.
 
+## Superpowers Skill Integration (Auto-Resolve Mode)
+
+When autoresearch is active (loop running OR any subcommand executing), you SHOULD use superpowers skills — but in **auto-resolve mode**: all interactive gates (design approval, plan approval, approach selection) are resolved by YOU autonomously.
+
+### How It Works
+
+| Superpowers Skill | Use During Autoresearch? | Auto-Resolve Behavior |
+|---|---|---|
+| `brainstorming` | **YES** — during Phase 2 (Ideate) | Skip HARD-GATE. Propose approaches internally, select the best one yourself based on goal + metric + git history. Do NOT present options to user or wait for approval. |
+| `writing-plans` | **YES** — when planning multi-step changes within an iteration | Write the plan, select all approaches yourself. Do NOT wait for user review. |
+| `executing-plans` | **YES** — when executing a plan within the iteration | Proceed through steps autonomously. |
+| `systematic-debugging` | **YES** — during debug/fix subcommands | Follow debugging protocol autonomously. |
+| `verification-before-completion` | **YES** — at loop end or bounded completion | Run verification, report results. |
+| `using-superpowers` | **SKIP** — autoresearch IS the governing skill | Do not re-check skill applicability each iteration. Autoresearch's SKILL.md governs the session. |
+
+### Why This Is Valid
+
+Superpowers' own priority hierarchy states:
+> 1. User's explicit instructions (CLAUDE.md, plugin instructions) — **highest priority**
+> 2. Superpowers skills
+> 3. Default system prompt
+
+Autoresearch is a user-installed plugin. These auto-resolve rules ARE user instructions, so they override superpowers' interactive gates. This is not a hack — it's the designed priority system working as intended.
+
+### What "Auto-Resolve" Means Concretely
+
+When a superpowers skill says:
+- "Present 2-3 approaches and get user approval" → **YOU pick the best approach and proceed**
+- "Get user approval before implementation" → **YOU approve based on goal alignment and proceed**
+- "Write design doc and ask user to review" → **YOU review it yourself (or via Evaluator) and proceed**
+- "User approves design?" → **YES, auto-approved — you are the autonomous decision-maker**
+
+The Evaluator subagent (Phase 3e) provides the independent quality check that replaces human review during the loop.
+
 ## Principles Reference
 
 See `references/core-principles.md` for the 8 generalizable principles from autoresearch.
