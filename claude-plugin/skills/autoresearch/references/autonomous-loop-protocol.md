@@ -9,7 +9,7 @@ Autoresearch supports two loop modes:
 - **Unbounded (default):** Loop forever until manually interrupted (`Ctrl+C`)
 - **Bounded:** Loop exactly N times when `Iterations: N` is set in the inline config (or `--iterations N` flag for CLI/CI)
 
-When bounded, track `current_iteration` against `max_iterations`. After the final iteration, print a summary and stop.
+In both modes, the **stop hook** is the mechanical enforcement layer. In bounded mode, the hook tracks the iteration counter and allows exit after N iterations. You do NOT need to track iterations yourself — complete each iteration (Phase 1→7), then stop. The hook decides whether to re-inject.
 
 ## Phase 0: Precondition Checks (before loop starts)
 
@@ -661,25 +661,23 @@ Go to Phase 1. **NEVER STOP. NEVER ASK IF YOU SHOULD CONTINUE.**
 
 ### Bounded Mode (with Iterations: N)
 
-```
-IF current_iteration < max_iterations:
-    Go to Phase 1
-ELIF goal_achieved:
-    Print: "Goal achieved at iteration {N}! Final metric: {value}"
-    Print final summary
-    STOP
-ELSE:
-    Print final summary
-    STOP
-```
+**The stop hook controls bounded iteration counting.** You do NOT track iterations internally.
 
-**Final summary format:**
+After completing Phase 7 (Log), stop. The hook will either:
+- **Re-inject the prompt** (iterations remaining) — you start the next iteration from Phase 1
+- **Allow exit** (N iterations reached) — the session ends
+
+The system message from the hook shows your current iteration: `🔬 Autoresearch iteration X/N`. When you see the final iteration (`N/N`), print a summary after completing it.
+
+**Final summary format (print on last iteration):**
 ```
-=== Autoresearch Complete (N/N iterations) ===
+=== Autoresearch Complete ===
 Baseline: {baseline} → Final: {current} ({delta})
 Keeps: X | Discards: Y | Crashes: Z | Skipped: W (no-ops + hook-blocked)
 Best iteration: #{n} — {description}
 ```
+
+**How to know it's the last iteration:** The system message shows `iteration N/N`. Complete the iteration normally, print the summary, then stop.
 
 ### When Stuck (>5 consecutive discards)
 
