@@ -17,13 +17,16 @@ Options:
   --guard           Shell command that must always pass (optional)
   --max-iterations  Stop after N iterations, 0 = unlimited (default: 0)
   --prompt          Full prompt to re-inject each iteration (optional, auto-generated if omitted)
+  --evaluator       "on" or "off" (default: on)
+  --evaluate        Review focus areas for evaluator (optional)
+  --max-rework      Max rework attempts on evaluator rejection (default: 2)
   -h, --help        Show this help
 USAGE
   exit 0
 }
 
 # ─── Argument Parsing ─────────────────────────────────────────────
-GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD="" MAX_ITERATIONS=0 PROMPT=""
+GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD="" MAX_ITERATIONS=0 PROMPT="" EVALUATOR="on" EVALUATE="" MAX_REWORK="2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,6 +38,9 @@ while [[ $# -gt 0 ]]; do
     --guard)          GUARD="$2";          shift 2 ;;
     --max-iterations) MAX_ITERATIONS="$2"; shift 2 ;;
     --prompt)         PROMPT="$2";         shift 2 ;;
+    --evaluator)      EVALUATOR="$2";      shift 2 ;;
+    --evaluate)       EVALUATE="$2";       shift 2 ;;
+    --max-rework)     MAX_REWORK="$2";     shift 2 ;;
     -h|--help)        usage ;;
     *)                echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -71,6 +77,14 @@ Verify: ${VERIFY}"
 Guard: ${GUARD}"
   fi
   PROMPT="${PROMPT}
+Evaluator: ${EVALUATOR}"
+  if [[ -n "$EVALUATE" ]]; then
+    PROMPT="${PROMPT}
+Evaluate: ${EVALUATE}"
+  fi
+  PROMPT="${PROMPT}
+Max-Rework: ${MAX_REWORK}"
+  PROMPT="${PROMPT}
 
 Read the autonomous loop protocol, check git log for recent experiments, review the results log, then execute the NEXT iteration. Do NOT re-run setup. Go directly to Phase 1 (Review) of the loop."
 fi
@@ -102,6 +116,9 @@ metric: $(yaml_escape "$METRIC")
 direction: ${DIRECTION}
 verify: $(yaml_escape "$VERIFY")
 guard: $(yaml_escape "$GUARD")
+evaluator: ${EVALUATOR}
+evaluate: $(yaml_escape "$EVALUATE")
+max_rework: ${MAX_REWORK}
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
@@ -118,6 +135,11 @@ echo "   Verify:         ${VERIFY}"
 if [[ -n "$GUARD" ]]; then
   echo "   Guard:          ${GUARD}"
 fi
+echo "   Evaluator:      ${EVALUATOR}"
+if [[ -n "$EVALUATE" ]]; then
+  echo "   Evaluate:       ${EVALUATE}"
+fi
+echo "   Max-Rework:     ${MAX_REWORK}"
 if [[ "$MAX_ITERATIONS" -gt 0 ]]; then
   echo "   Max iterations: ${MAX_ITERATIONS}"
 else
