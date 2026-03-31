@@ -200,6 +200,24 @@ Autoresearch CANNOT: change tokenizer, replace human direction, guarantee meanin
 
 **Apply:** At setup, explicitly state constraints. If agent hits a wall it can't solve (missing permissions, external dependency, needs human judgment), say so clearly instead of guessing.
 
+## 8. Separate Generation from Evaluation
+
+Agents evaluating their own output exhibit systematic self-evaluation bias. Separating generator from evaluator is more tractable than making generators self-critical.
+
+| Generator | Evaluator |
+|-----------|-----------|
+| Implements changes | Critically reviews changes |
+| Tends to believe own approach works | Default stance is skeptical |
+| Has full implementation context | Sees only diff + goal, judges independently |
+
+**Why:** The same agent that wrote the code has sunk cost bias. An independent Evaluator has no attachment to the implementation and is more likely to find problems.
+
+**Apply:** After mechanical metric passes, spawn an independent Evaluator subagent to review the change. Evaluator feedback drives the rework loop.
+
+**When to skip:** When the task already has sufficient multi-perspective mechanisms (e.g., predict's multi-persona swarm). As models improve, the threshold for Evaluator intervention can be raised — re-examine periodically.
+
+**Source:** [Anthropic — Harness Design for Long-Running Application Development](https://www.anthropic.com/engineering/harness-design-long-running-apps) (March 2026)
+
 ## The Meta-Principle
 
 > Autonomy scales when you constrain scope, clarify success, mechanize verification, and let agents optimize tactics while humans optimize strategy.
