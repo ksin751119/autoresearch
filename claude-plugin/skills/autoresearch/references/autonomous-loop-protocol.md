@@ -289,7 +289,7 @@ The inner loop runs Phase 3a → 3b → 3c → 3d → 3e. If any hard gate (3c V
 
 ```
 attempt = 0
-max_rework = Max-Rework config value (default: 1)
+max_rework = Max-Rework config value (default: 2)
 
 LOOP:
   3a: Modify (use Phase 2 plan on attempt=0, or Evaluator critique on attempt>0)
