@@ -600,15 +600,15 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 2. This state file activates the Stop hook
 3. Every time you try to exit, the hook:
    - Reads the state file
-   - Checks if max iterations reached → if yes, allows exit
-   - Otherwise → blocks exit and re-injects the loop prompt
-   - Increments the iteration counter
+   - If `active: false` or max iterations reached → allows exit and removes state file
+   - Otherwise → increments iteration counter, blocks exit, and re-injects the loop prompt
 
 ### What This Means For You
 
 - **You cannot exit the loop by stopping.** The hook will restart you.
 - **You do not need to ask "should I continue?"** — the hook handles continuation.
-- **Focus on the current iteration only.** Do Phase 1-8, then let the hook handle the restart.
+- **In bounded mode, do NOT track iterations yourself.** Complete Phase 1-7, then stop. The hook counts iterations and decides whether to continue or allow exit. The system message shows `iteration X/N` so you know where you are.
+- **Focus on the current iteration only.** Do Phase 1-7, log results, then stop.
 - **If truly blocked** (missing permissions, broken environment), output a clear error message. The user can run `/autoresearch:cancel` to stop the loop.
 
 ### State File Location
@@ -618,7 +618,7 @@ Autoresearch uses a **Stop hook** to mechanically prevent the session from endin
 ### Stopping the Loop
 
 - `/autoresearch:cancel` — removes state file, loop stops on next exit
-- Max iterations reached — hook auto-removes state file
+- Max iterations reached — hook allows exit and removes state file
 - User manually deletes `.claude/autoresearch-loop.local.md`
 
 ## Critical Rules
