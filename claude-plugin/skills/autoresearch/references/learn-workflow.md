@@ -3,6 +3,7 @@
 Autonomous codebase documentation engine. Scouts codebase structure, learns patterns and architecture, generates/updates comprehensive documentation — then validates and iteratively improves until docs are accurate.
 
 **Core idea:** Scout → Generate → Validate → Fix → Repeat until docs match codebase reality.
+**Evaluator default:** `off` — outputs documentation with its own validation-fix loop.
 
 ## Trigger
 

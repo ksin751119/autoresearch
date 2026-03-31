@@ -3,6 +3,7 @@
 Autonomous fix loop that takes a broken state and iteratively repairs it until everything passes. One fix per iteration. Atomic, committed, verified, auto-reverted on failure.
 
 **Core idea:** Detect → Prioritize → Fix ONE thing → Verify → Keep/Revert → Repeat until zero errors.
+**Evaluator default:** `on` — catches lazy fixes (suppressions, any types, deleted tests).
 
 ## Trigger
 

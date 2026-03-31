@@ -3,6 +3,7 @@
 Multi-persona swarm prediction that pre-analyzes code from multiple expert perspectives. Simulates 3-5 personas that independently analyze, debate, and reach consensus — producing ranked findings and hypotheses. All within Claude's native context. Zero external dependencies.
 
 **Core idea:** Read code → Build knowledge files → Generate personas → Independent analysis → Debate → Consensus → Report → Optional chain handoff. Every finding needs file:line evidence. Every prediction gets confidence scoring.
+**Evaluator default:** `off` — this workflow already uses multi-persona swarm with debate and anti-herd detection.
 
 ## Trigger
 

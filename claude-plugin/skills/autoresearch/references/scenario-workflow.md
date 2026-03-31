@@ -3,6 +3,7 @@
 Scenario-driven use case generator that autonomously explores situations, edge cases, failure modes, and derivative scenarios from a seed scenario. Doesn't stop at obvious paths — iteratively discovers what could go wrong, what's missing, and what nobody thought of.
 
 **Core idea:** Seed scenario in → Decompose into dimensions → Generate situations → Classify (new/duplicate/variant) → Expand edge cases → Log → Repeat. Every iteration explores one unexplored combination.
+**Evaluator default:** `off` — outputs scenarios, not code changes. No Verify/Guard flow to supplement.
 
 ## Trigger
 

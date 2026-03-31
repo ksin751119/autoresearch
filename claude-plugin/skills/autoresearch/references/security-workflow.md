@@ -3,6 +3,7 @@
 Autonomous security auditing that uses the autoresearch loop to iteratively discover, validate, and report vulnerabilities. Combines STRIDE threat modeling, OWASP Top 10 sweeps, and red-team adversarial analysis into a single autonomous loop.
 
 **Output:** A severity-ranked security report with threat model, findings, mitigations, and iteration log.
+**Evaluator default:** `off` — this workflow already uses 4 adversarial personas for multi-perspective analysis.
 
 ## Trigger
 

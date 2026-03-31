@@ -3,6 +3,7 @@
 Autonomous bug-hunting loop that applies the scientific method iteratively. Doesn't stop at one bug — keeps investigating until the codebase is clean or you interrupt.
 
 **Core idea:** Hypothesize → Test → Prove/Disprove → Log → Repeat. Every finding needs code evidence. Every failed hypothesis teaches the next one.
+**Evaluator default:** `on` — challenges hypothesis experiment design and evidence quality.
 
 ## Trigger
 
