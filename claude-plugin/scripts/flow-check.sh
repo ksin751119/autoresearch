@@ -29,6 +29,10 @@ parse_field() {
 
 check_commit_count() {
   local commit_before="${1:?Usage: flow-check.sh commit-count <commit_before>}"
+  if ! git rev-parse --verify "${commit_before}" &>/dev/null; then
+    echo "Commit count: could not resolve commit_before '${commit_before}' — is this a valid SHA?"
+    exit 1
+  fi
   local count
   count=$(git log --oneline "${commit_before}..HEAD" 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$count" -gt 1 ]]; then
@@ -96,6 +100,8 @@ check_promise_guard() {
   local direction="${2:?}"
   local baseline="${3:?}"
 
+  # SECURITY: eval is intentional — verify_cmd is a user-configured shell command.
+  # Do not pass untrusted input to this check.
   local metric
   metric=$(eval "$verify_cmd" 2>/dev/null | grep -oE '[0-9]+\.?[0-9]*' | tail -1 || true)
   if [[ -z "$metric" ]]; then
