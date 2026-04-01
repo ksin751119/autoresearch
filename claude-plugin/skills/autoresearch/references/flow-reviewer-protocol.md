@@ -211,13 +211,35 @@ Call the plugin's `flow-check.sh` script at specific phases:
 
 ## Output Format
 
-### PROCEED
+### PROCEED (at DECIDE_ACTION)
 
 ```
 PROCEED
 
-Phase: DISPATCH_DEV
-Updated flow.state.md: phase=DISPATCH_DEV, commit_before=a1b2c3d, dev_dispatched=true
+Phase: DECIDE_ACTION
+Workflow Step 3: "實作最有效的優化"
+→ This step requires: DISPATCH_DEV
+→ Previous findings: token_scan is the bottleneck (450ms)
+
+Notes reminder:
+- 不能修改測試檔案
+- 不能移除任何 token pair
+- pipeline 正確性優先於速度
+
+Updated flow.state.md: phase=DECIDE_ACTION, workflow_step=3
+```
+
+### PROCEED (at REVIEW_DEV)
+
+```
+PROCEED
+
+Phase: REVIEW_DEV
+✅ commit-count: 1 (atomic)
+✅ Notes: no test files modified (git diff --name-only)
+✅ Notes: no token pairs removed (git diff)
+
+Updated flow.state.md: phase=REVIEW_DEV
 ```
 
 ### DEVIATION
@@ -231,6 +253,31 @@ Actual proposed: DECIDE_OUTCOME
 
 Logged to .autoresearch/flow.issue.md
 Correct next step: DISPATCH_EVALUATOR — dispatch Evaluator with Dev's git diff.
+```
+
+### DEVIATION (Notes violation)
+
+```
+DEVIATION
+
+Violation: Notes says "不能修改測試檔案" but Dev modified tests/test_scanner.rs
+Evidence: git diff --name-only HEAD~1 includes tests/test_scanner.rs
+
+Logged to .autoresearch/flow.issue.md
+Action: Coordinator must git revert and re-dispatch Dev with explicit file constraint.
+```
+
+### DEVIATION (Workflow step skip)
+
+```
+DEVIATION
+
+Violation: Coordinator wants to jump to Step 3 "實作" but Step 2 "研究可行方案" has not been completed.
+Expected: DECIDE_ACTION for Step 2
+Actual proposed: DECIDE_ACTION for Step 3
+
+Logged to .autoresearch/flow.issue.md
+Correct next step: Complete Step 2 first — DISPATCH_RESEARCH to study optimization approaches.
 ```
 
 ## flow.issue.md Format
