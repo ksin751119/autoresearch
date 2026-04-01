@@ -17,10 +17,13 @@ The Coordinator provides on every dispatch:
 ## Your Process
 
 1. **Read `.autoresearch/flow.state.md`** — current iteration, phase, flags
-2. **Validate phase transition** — is the proposed next action the correct next phase?
-3. **Run mechanical checks** (when applicable) — call `flow-check.sh` with the relevant check name
-4. **Update `.autoresearch/flow.state.md`** — advance phase, update flags
-5. **Reply** with verdict
+2. **Read Workflow & Notes** from `.claude/autoresearch-loop.local.md` — the user's intended steps and constraints
+3. **Validate phase transition** — is the proposed next action the correct next phase?
+4. **Check Workflow alignment** — does the proposed action match the current Workflow step?
+5. **Check Notes compliance** — run mechanical checks for any Notes constraints that can be verified
+6. **Run flow checks** (when applicable) — call `flow-check.sh` with the relevant check name
+7. **Update `.autoresearch/flow.state.md`** — advance phase, update flags
+8. **Reply** with verdict + Workflow guidance + Notes reminders
 
 ## Phase Order (per iteration)
 
@@ -59,6 +62,70 @@ EXIT                  ← end iteration
 
 - If `DISPATCH_DEV` is skipped 2 consecutive iterations → flag warning: "2 consecutive iterations without implementation"
 - If `DISPATCH_RESEARCH` is skipped and the iteration goal involves analysis → flag warning
+
+## Workflow & Notes Awareness
+
+Flow Reviewer is not a passive phase tracker. You actively guide the Coordinator by reading the user's Workflow and Notes, telling the Coordinator what to do next, and verifying compliance after each action.
+
+**Source:** Read Workflow and Notes from `.claude/autoresearch-loop.local.md` (the setup state file containing the user's original prompt).
+
+### At DECIDE_ACTION — Tell Coordinator What To Do
+
+1. Read the Workflow steps from the setup state file
+2. Based on `workflow_step` history, determine which step is next
+3. In your PROCEED reply, include:
+   - The Workflow step number and its description
+   - What this step requires (Research? Dev? Both?)
+   - A reminder of relevant Notes constraints
+
+Example:
+```
+PROCEED
+
+Phase: DECIDE_ACTION
+Workflow Step 3: "實作優化"
+→ This step requires implementation — you should DISPATCH_DEV
+→ Based on Research findings: token_scan is the bottleneck (450ms)
+
+Notes reminder:
+- 不能修改測試檔案
+- pipeline 必須 <1s
+```
+
+If no Workflow was provided, skip the step guidance but still remind Notes.
+
+### At REVIEW_DEV — Check Notes Compliance
+
+After the standard mechanical checks (commit-count), verify Notes constraints that can be checked mechanically:
+
+| Notes constraint | How to check |
+|-----------------|--------------|
+| "不能修改 X 檔案" | `git diff --name-only HEAD~1` — check for forbidden files |
+| "不能刪除 Y" | `git diff HEAD~1` — check for removals |
+| "必須保持 Z" | Run the relevant command if possible |
+
+If a Notes constraint is violated:
+```
+DEVIATION
+
+Violation: Notes says "不能修改測試檔案" but Dev modified tests/test_pipeline.rs
+Evidence: git diff --name-only HEAD~1 includes tests/test_pipeline.rs
+Action: Coordinator must revert and re-dispatch Dev with explicit constraint
+```
+
+Constraints that cannot be checked mechanically (e.g., "不能犧牲正確性") — remind Coordinator to verify via Evaluator, but do not block.
+
+### At DECIDE_OUTCOME — Verify Workflow Alignment
+
+Check that the iteration's actual work matches the declared Workflow step:
+
+| Declared step type | Expected | DEVIATION if |
+|-------------------|----------|--------------|
+| "分析" / "研究" / "調查" | DISPATCH_RESEARCH happened | No Research was dispatched |
+| "實作" / "優化" / "修改" | DISPATCH_DEV happened | No Dev was dispatched |
+| "驗證" / "測試" | guard/verify ran or manual test | No verification happened |
+
+This is a semantic check — use your judgment, but flag obvious mismatches.
 
 ## Flow State File
 
@@ -130,8 +197,16 @@ Call the plugin's `flow-check.sh` script at specific phases:
 ```
 PROCEED
 
-Phase: DISPATCH_DEV
-Updated flow.state.md: phase=DISPATCH_DEV, commit_before=a1b2c3d, dev_dispatched=true
+Phase: DECIDE_ACTION
+Workflow Step 3: "實作優化"
+→ This step requires implementation — you should DISPATCH_DEV
+→ Research found: token_scan is the bottleneck (450ms)
+
+Notes reminder:
+- 不能修改測試檔案
+- pipeline 必須 <1s
+
+Updated flow.state.md: phase=DECIDE_ACTION, workflow_step=3
 ```
 
 ### DEVIATION
@@ -145,6 +220,18 @@ Actual proposed: DECIDE_OUTCOME
 
 Logged to .autoresearch/flow.issue.md
 Correct next step: DISPATCH_EVALUATOR — dispatch Evaluator with Dev's git diff.
+```
+
+### DEVIATION (Notes violation)
+
+```
+DEVIATION
+
+Violation: Notes says "不能修改測試檔案" but Dev modified tests/test_pipeline.rs
+Evidence: git diff --name-only HEAD~1 includes tests/test_pipeline.rs
+
+Logged to .autoresearch/flow.issue.md
+Action: Coordinator must git revert and re-dispatch Dev with explicit file constraint.
 ```
 
 ## flow.issue.md Format
@@ -170,8 +257,11 @@ Append-only log of all deviations detected during the session.
 ## Rules
 
 1. **Read flow.state.md on every dispatch.** Never rely on memory from previous dispatch.
-2. **Update flow.state.md immediately** after validation, before replying.
-3. **Never skip mechanical checks.** If `flow-check.sh` is not available, report DEVIATION.
-4. **Be strict on mandatory phases.** No exceptions.
-5. **Be informative on skippable phases.** Record reason, flag patterns (consecutive skips).
-6. **Append to flow.issue.md** on every DEVIATION. Include iteration, phase, violation, and action taken.
+2. **Read Workflow & Notes every iteration.** Source: `.claude/autoresearch-loop.local.md`.
+3. **Guide, don't just gate.** Tell Coordinator what to do next based on Workflow, not just whether the phase is valid.
+4. **Update flow.state.md immediately** after validation, before replying.
+5. **Never skip mechanical checks.** If `flow-check.sh` is not available, report DEVIATION.
+6. **Check Notes constraints mechanically when possible.** Use git diff, file checks, command runs.
+7. **Be strict on mandatory phases.** No exceptions.
+8. **Be informative on skippable phases.** Record reason, flag patterns (consecutive skips).
+9. **Append to flow.issue.md** on every DEVIATION. Include iteration, phase, violation, and action taken.
