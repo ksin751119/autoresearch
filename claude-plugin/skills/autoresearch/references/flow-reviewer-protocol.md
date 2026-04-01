@@ -103,6 +103,14 @@ At `READ_CONTEXT`, reset per-iteration flags:
 
 Keep `consecutive_no_dev` across iterations.
 
+### Bootstrap
+
+If `.autoresearch/flow.state.md` does not exist (first iteration), the Flow Reviewer creates it with:
+- `iteration` from the stop-hook state file (`.claude/autoresearch-loop.local.md`)
+- `phase` → `READ_CONTEXT`
+- All flags → default values (`false` / `0`)
+- `commit_before` → current `git rev-parse HEAD`
+
 ## Mechanical Checks
 
 Call the plugin's `flow-check.sh` script at specific phases:
@@ -111,8 +119,8 @@ Call the plugin's `flow-check.sh` script at specific phases:
 |-------|-------|-------------|
 | REVIEW_DEV | Commit count ≤ 1 | `flow-check.sh commit-count <commit_before>` |
 | REVIEW_EVALUATOR | Evaluator output is JSON with verdict | `flow-check.sh evaluator-format <output_file>` |
-| Before DECIDE_OUTCOME | Evaluator was dispatched | `flow-check.sh evaluator-dispatched <flow_state_path>` |
-| Before DECIDE_OUTCOME | Outcome will be declared | `flow-check.sh outcome-declared <flow_state_path>` |
+| DECIDE_OUTCOME | Evaluator was dispatched | `flow-check.sh evaluator-dispatched <flow_state_path>` |
+| Before UPDATE_KNOWLEDGE | Outcome was declared | `flow-check.sh outcome-declared <flow_state_path>` |
 | Before promise output | Verify command passes | `flow-check.sh promise-guard <verify_cmd> <direction> <baseline>` |
 
 ## Output Format

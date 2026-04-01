@@ -65,7 +65,7 @@ spawn Dev Agent with:
 
 **After Dev completes** (if Evaluator is enabled):
 - Dispatch Flow Reviewer: "Completed REVIEW_DEV. Next: DISPATCH_EVALUATOR"
-- Flow Reviewer runs `flow-check.sh commit-count` to verify atomic commit
+- Flow Reviewer runs `flow-check.sh commit-count` during REVIEW_DEV to verify atomic commit
 ```
 spawn Evaluator Agent with:
   - Git diff: Dev's changes
@@ -97,7 +97,7 @@ For Evaluator output:
 
 ### 5. Decide: Keep / Discard / Rework
 - Dispatch Flow Reviewer: "Completed REVIEW_EVALUATOR. Next: DECIDE_OUTCOME — [KEEP/DISCARD/REWORK] because [reason]"
-- Flow Reviewer runs `flow-check.sh evaluator-dispatched` and `flow-check.sh outcome-declared`
+- Flow Reviewer runs `flow-check.sh evaluator-dispatched`
 - You MUST explicitly state KEEP, DISCARD, or REWORK with a reason.
 
 | Condition | Action |
@@ -112,6 +112,7 @@ For Evaluator output:
 ### 6. Update Knowledge
 
 - Dispatch Flow Reviewer: "Completed DECIDE_OUTCOME. Next: UPDATE_KNOWLEDGE"
+- Flow Reviewer runs `flow-check.sh outcome-declared` to verify outcome was explicitly declared
 
 At the END of the iteration:
 
@@ -129,6 +130,8 @@ At the END of the iteration:
 3. **Save to memory** (if cross-session finding discovered) — see knowledge-system.md
 
 ### 7. Exit
+
+- Dispatch Flow Reviewer: "Completed UPDATE_KNOWLEDGE. Next: EXIT"
 
 Simply stop. The Stop Hook will catch your exit and re-inject the prompt for the next iteration.
 
