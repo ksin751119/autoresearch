@@ -1,184 +1,107 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
-# ─── Usage ────────────────────────────────────────────────────────
 usage() {
   cat <<'USAGE'
-Usage: validate-config.sh --goal GOAL --scope SCOPE --metric METRIC --direction DIR --verify CMD [--guard CMD] [--evaluator on|off] [--max-rework N]
+Usage: validate-config.sh --goal GOAL [OPTIONS]
 
-Validates autoresearch config before loop activation.
+Validates autoresearch configuration. Only --goal is required.
 
-Checks:
-  1. All 5 required fields are non-empty
-  2. Direction is "higher" or "lower"
-  3. Git repo exists and is not detached HEAD
-  4. Scope glob resolves to at least 1 file
-  5. Verify command dry-run succeeds and outputs a number
-  6. Guard command dry-run succeeds (if provided)
-  7. Evaluator is "on" or "off"
-  8. Max-Rework is a non-negative integer
+Required:
+  --goal            What to achieve
 
-Exit 0 = all checks passed. Exit 1 = validation failed.
+Optional (validated if provided):
+  --guard CMD       Dry-run the guard command
+  --verify CMD      Dry-run the verify command (must output a number)
+  --direction DIR   Must be "higher" or "lower" (required with --verify)
+  --evaluator VAL   Must be "on" or "off"
+  --max-rework N    Must be a non-negative integer
 USAGE
   exit 0
 }
 
-# ─── Argument Parsing ─────────────────────────────────────────────
-GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD="" EVALUATOR="on" MAX_REWORK="2"
+GOAL="" GUARD="" VERIFY="" DIRECTION="" EVALUATOR="" MAX_REWORK=""
+ERRORS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --goal)      GOAL="$2";      shift 2 ;;
-    --scope)     SCOPE="$2";     shift 2 ;;
-    --metric)    METRIC="$2";    shift 2 ;;
-    --direction) DIRECTION="$2"; shift 2 ;;
-    --verify)    VERIFY="$2";    shift 2 ;;
-    --guard)      GUARD="$2";      shift 2 ;;
-    --evaluator)  EVALUATOR="$2";  shift 2 ;;
-    --max-rework) MAX_REWORK="$2"; shift 2 ;;
-    -h|--help)    usage ;;
-    *)           echo "Unknown option: $1" >&2; exit 1 ;;
+    --goal)        GOAL="$2";       shift 2 ;;
+    --guard)       GUARD="$2";      shift 2 ;;
+    --verify)      VERIFY="$2";     shift 2 ;;
+    --direction)   DIRECTION="$2";  shift 2 ;;
+    --evaluator)   EVALUATOR="$2";  shift 2 ;;
+    --max-rework)  MAX_REWORK="$2"; shift 2 ;;
+    -h|--help)     usage ;;
+    *)             shift ;;
   esac
 done
 
-ERRORS=0
-
-fail() {
-  echo "FAIL: $1" >&2
-  ERRORS=$((ERRORS + 1))
-}
-
-warn() {
-  echo "WARN: $1" >&2
-}
-
-# ─── Check 1: Required fields ────────────────────────────────────
-echo "Checking required fields..."
-[[ -z "$GOAL" ]]      && fail "Goal is empty"
-[[ -z "$SCOPE" ]]     && fail "Scope is empty"
-[[ -z "$METRIC" ]]    && fail "Metric is empty"
-[[ -z "$DIRECTION" ]] && fail "Direction is empty"
-[[ -z "$VERIFY" ]]    && fail "Verify is empty"
-
-if [[ $ERRORS -gt 0 ]]; then
-  echo "VALIDATION FAILED: $ERRORS required field(s) missing." >&2
-  exit 1
+if [[ -z "$GOAL" ]]; then
+  ERRORS+=("Goal is required but was not provided.")
 fi
-echo "  All required fields present."
 
-# ─── Check 2: Direction value ─────────────────────────────────────
-echo "Checking direction value..."
-if [[ "$DIRECTION" != "higher" ]] && [[ "$DIRECTION" != "lower" ]]; then
-  fail "Direction must be 'higher' or 'lower', got: '$DIRECTION'"
-  echo "VALIDATION FAILED." >&2
-  exit 1
-fi
-echo "  Direction: $DIRECTION"
-
-# ─── Check 3: Git status ─────────────────────────────────────────
-echo "Checking git status..."
 if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-  fail "Not inside a git repository"
-  echo "VALIDATION FAILED." >&2
-  exit 1
+  ERRORS+=("Not inside a git repository. Autoresearch requires git for memory.")
 fi
-echo "  Inside git repo."
-
-if ! git symbolic-ref HEAD &>/dev/null; then
-  warn "Detached HEAD detected — commits may be lost. Consider checking out a branch."
-fi
-
-DIRTY=$(git status --porcelain 2>/dev/null)
-if [[ -n "$DIRTY" ]]; then
-  warn "Working tree has uncommitted changes. Autoresearch will commit experiments on top of current state."
-fi
-
-# ─── Check 4: Scope glob ─────────────────────────────────────────
-echo "Checking scope glob..."
-# Split scope by comma or space, check each glob
-SCOPE_COUNT=0
-IFS=', ' read -ra SCOPE_PARTS <<< "$SCOPE"
-for glob in "${SCOPE_PARTS[@]}"; do
-  # Use bash globbing to count matches
-  COUNT=$(find . -path "./$glob" 2>/dev/null | head -20 | wc -l | tr -d ' ')
-  if [[ "$COUNT" -eq 0 ]]; then
-    # Try with git ls-files for better glob support
-    COUNT=$(git ls-files "$glob" 2>/dev/null | head -20 | wc -l | tr -d ' ')
+if git rev-parse --is-inside-work-tree &>/dev/null; then
+  if ! git symbolic-ref -q HEAD &>/dev/null; then
+    ERRORS+=("Detached HEAD state. Please checkout a branch before starting.")
   fi
-  SCOPE_COUNT=$((SCOPE_COUNT + COUNT))
-done
-
-if [[ "$SCOPE_COUNT" -eq 0 ]]; then
-  fail "Scope '$SCOPE' matches 0 files. Check the glob pattern."
-  echo "VALIDATION FAILED." >&2
-  exit 1
-fi
-echo "  Scope matches $SCOPE_COUNT+ file(s)."
-
-# ─── Check 5: Verify dry-run ─────────────────────────────────────
-echo "Dry-running verify command..."
-echo "  Command: $VERIFY"
-
-VERIFY_OUTPUT=$(bash -c "$VERIFY" 2>&1)
-VERIFY_EXIT=$?
-
-if [[ $VERIFY_EXIT -ne 0 ]]; then
-  fail "Verify command failed with exit code $VERIFY_EXIT"
-  echo "  Output (last 5 lines):" >&2
-  echo "$VERIFY_OUTPUT" | tail -5 >&2
-  echo "VALIDATION FAILED." >&2
-  exit 1
 fi
 
-# Check output contains at least one number
-if ! echo "$VERIFY_OUTPUT" | grep -qE '[0-9]+\.?[0-9]*'; then
-  fail "Verify command produced no numeric output. The metric must be a number."
-  echo "  Output (last 5 lines):" >&2
-  echo "$VERIFY_OUTPUT" | tail -5 >&2
-  echo "VALIDATION FAILED." >&2
-  exit 1
+if [[ -n "$DIRECTION" ]] && [[ "$DIRECTION" != "higher" ]] && [[ "$DIRECTION" != "lower" ]]; then
+  ERRORS+=("Direction must be 'higher' or 'lower', got: '$DIRECTION'")
 fi
 
-echo "  Verify command succeeded (exit 0, numeric output found)."
+if [[ -n "$VERIFY" ]]; then
+  if [[ -z "$DIRECTION" ]]; then
+    ERRORS+=("--direction is required when --verify is set.")
+  fi
+  echo "Dry-running verify command: $VERIFY" >&2
+  set +e
+  VERIFY_OUTPUT=$(eval "$VERIFY" 2>&1)
+  VERIFY_EXIT=$?
+  set -e
+  if [[ $VERIFY_EXIT -ne 0 ]]; then
+    ERRORS+=("Verify command failed (exit $VERIFY_EXIT): $VERIFY_OUTPUT")
+  else
+    METRIC_NUM=$(echo "$VERIFY_OUTPUT" | grep -oE '[0-9]+\.?[0-9]*' | tail -1)
+    if [[ -z "$METRIC_NUM" ]]; then
+      ERRORS+=("Verify command did not output a number. Output: $VERIFY_OUTPUT")
+    else
+      echo "Verify dry-run OK: metric = $METRIC_NUM" >&2
+    fi
+  fi
+fi
 
-# ─── Check 6: Guard dry-run (optional) ───────────────────────────
 if [[ -n "$GUARD" ]]; then
-  echo "Dry-running guard command..."
-  echo "  Command: $GUARD"
-
-  GUARD_OUTPUT=$(bash -c "$GUARD" 2>&1)
+  echo "Dry-running guard command: $GUARD" >&2
+  set +e
+  GUARD_OUTPUT=$(eval "$GUARD" 2>&1)
   GUARD_EXIT=$?
-
+  set -e
   if [[ $GUARD_EXIT -ne 0 ]]; then
-    fail "Guard command failed with exit code $GUARD_EXIT"
-    echo "  Output (last 5 lines):" >&2
-    echo "$GUARD_OUTPUT" | tail -5 >&2
-    echo "VALIDATION FAILED." >&2
-    exit 1
+    ERRORS+=("Guard command failed (exit $GUARD_EXIT): $GUARD_OUTPUT")
+  else
+    echo "Guard dry-run OK" >&2
   fi
-
-  echo "  Guard command succeeded (exit 0)."
 fi
 
-# ─── Check 7: Evaluator value ───────────────────────────────────
-echo "Checking evaluator setting..."
-if [[ "$EVALUATOR" != "on" ]] && [[ "$EVALUATOR" != "off" ]]; then
-  fail "Evaluator must be 'on' or 'off', got: '$EVALUATOR'"
-  echo "VALIDATION FAILED." >&2
+if [[ -n "$EVALUATOR" ]] && [[ "$EVALUATOR" != "on" ]] && [[ "$EVALUATOR" != "off" ]]; then
+  ERRORS+=("Evaluator must be 'on' or 'off', got: '$EVALUATOR'")
+fi
+
+if [[ -n "$MAX_REWORK" ]] && ! [[ "$MAX_REWORK" =~ ^[0-9]+$ ]]; then
+  ERRORS+=("Max-rework must be a non-negative integer, got: '$MAX_REWORK'")
+fi
+
+if [[ ${#ERRORS[@]} -gt 0 ]]; then
+  echo "❌ Validation failed:" >&2
+  for err in "${ERRORS[@]}"; do
+    echo "  - $err" >&2
+  done
   exit 1
 fi
-echo "  Evaluator: $EVALUATOR"
 
-# ─── Check 8: Max-Rework value ──────────────────────────────────
-echo "Checking max-rework setting..."
-if ! [[ "$MAX_REWORK" =~ ^[0-9]+$ ]]; then
-  fail "Max-Rework must be a non-negative integer, got: '$MAX_REWORK'"
-  echo "VALIDATION FAILED." >&2
-  exit 1
-fi
-echo "  Max-Rework: $MAX_REWORK"
-
-# ─── Result ───────────────────────────────────────────────────────
-echo ""
-echo "ALL CHECKS PASSED. Ready to start autoresearch loop."
+echo "✅ Validation passed" >&2
 exit 0
