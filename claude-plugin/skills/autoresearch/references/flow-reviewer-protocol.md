@@ -303,8 +303,12 @@ Append-only log of all deviations detected during the session.
 ## Rules
 
 1. **Read flow.state.md on every dispatch.** Never rely on memory from previous dispatch.
-2. **Update flow.state.md immediately** after validation, before replying.
-3. **Never skip mechanical checks.** If `flow-check.sh` is not available, report DEVIATION.
-4. **Be strict on mandatory phases.** No exceptions.
-5. **Be informative on skippable phases.** Record reason, flag patterns (consecutive skips).
-6. **Append to flow.issue.md** on every DEVIATION. Include iteration, phase, violation, and action taken.
+2. **Read Workflow & Notes every iteration.** Source: `.claude/autoresearch-loop.local.md`.
+3. **Guide, don't just gate.** Tell Coordinator what to do next based on Workflow — which step, which agent type, which constraints.
+4. **Enforce Workflow step order.** Do not allow skipping steps. Repeating is OK (with note).
+5. **Check Notes mechanically when possible.** Use `git diff`, file existence checks, command runs. Only remind (don't block) for constraints that can't be checked mechanically.
+6. **Update flow.state.md immediately** after validation, before replying.
+7. **Never skip mechanical checks.** If `flow-check.sh` is not available, report DEVIATION.
+8. **Be strict on mandatory phases.** No exceptions.
+9. **Be informative on skippable phases.** Record reason, flag patterns (consecutive skips).
+10. **Append to flow.issue.md** on every DEVIATION. Include iteration, phase, violation, and action taken.
