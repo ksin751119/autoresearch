@@ -64,6 +64,88 @@ EXIT                  ← end iteration
 - If `DISPATCH_DEV` is skipped 2 consecutive iterations → flag warning: "2 consecutive iterations without implementation"
 - If `DISPATCH_RESEARCH` is skipped and the iteration goal involves analysis → flag warning
 
+## Workflow & Notes Awareness
+
+You actively guide the Coordinator by reading the user's Workflow and Notes, telling it what to do next, and verifying compliance after each action.
+
+**Source:** Read Workflow and Notes from `.claude/autoresearch-loop.local.md` (the setup state file). If no Workflow is provided, skip step guidance but still remind Notes. If no Notes are provided, skip constraint reminders.
+
+### At DECIDE_ACTION — Tell Coordinator What To Do
+
+1. Read the Workflow steps
+2. Based on `workflow_step` history in flow.state.md, determine which step is next
+3. Map the step description to a required agent type using keyword matching:
+
+| Step keywords | Required agent | Example |
+|--------------|----------------|---------|
+| 分析, 研究, 調查, 診斷, analyze, investigate | DISPATCH_RESEARCH | "分析 pipeline 各階段耗時" |
+| 實作, 優化, 修改, 修復, 建立, 重構, implement, fix, refactor | DISPATCH_DEV | "實作最有效的優化" |
+| 驗證, 測試, 確認, validate, test, verify | Run guard/verify, optionally DISPATCH_RESEARCH | "驗證效能改善" |
+| 規劃, 設計, plan, design | DISPATCH_RESEARCH | "規劃優化方案" |
+
+4. In your PROCEED reply, include:
+   - The Workflow step number and description
+   - What agent type this step requires
+   - What agent type this step does NOT need (to prevent Coordinator from overstepping)
+   - A reminder of all Notes constraints
+
+Example PROCEED at DECIDE_ACTION:
+```
+PROCEED
+
+Phase: DECIDE_ACTION
+Workflow Step 3: "實作最有效的優化"
+→ This step requires: DISPATCH_DEV
+→ This step does NOT need: skipping straight to Step 4
+→ Previous findings: token_scan is the bottleneck (450ms)
+
+Notes reminder:
+- 不能修改測試檔案
+- 不能移除任何 token pair
+- pipeline 正確性優先於速度
+
+Updated flow.state.md: workflow_step=3
+```
+
+### At DISPATCH_RESEARCH / DISPATCH_DEV — Verify Agent Matches Step
+
+When Coordinator proposes to dispatch an agent, verify it matches the Workflow step:
+
+- Step says "分析" but Coordinator wants DISPATCH_DEV → DEVIATION (should be Research first)
+- Step says "實作" but Coordinator wants to skip Dev and go to UPDATE_KNOWLEDGE → DEVIATION (step requires implementation)
+- Step says "實作" and Coordinator wants DISPATCH_RESEARCH first → PROCEED (Research before Dev is acceptable for implementation steps)
+
+### At REVIEW_DEV — Check Notes Compliance
+
+After the standard mechanical checks (commit-count), verify Notes constraints that can be checked with git commands:
+
+| Notes pattern | How to check |
+|--------------|--------------|
+| "不能修改 X 檔案" / "don't modify X" | `git diff --name-only HEAD~1` — check for X in output |
+| "不能移除 Y" / "don't remove Y" | `git diff HEAD~1` — search for removed Y |
+| "不能刪除 Z" / "don't delete Z" | `git diff --name-only --diff-filter=D HEAD~1` — check for Z |
+
+If a Notes constraint is violated → DEVIATION with evidence (the git diff output).
+
+Constraints that cannot be checked mechanically (e.g., "正確性優先於速度") → include as a reminder in your PROCEED reply so Coordinator sends it to Evaluator, but do not block.
+
+### At DECIDE_OUTCOME — Verify Workflow Alignment
+
+Check that the iteration's actual work matches the declared Workflow step:
+
+| Declared step type | Check | DEVIATION if |
+|-------------------|-------|--------------|
+| "分析" / "研究" | `dev_dispatched` in flow.state.md | Dev was dispatched but Research was not (did implementation instead of analysis) |
+| "實作" / "優化" | `dev_dispatched` in flow.state.md | false — no implementation happened |
+| "驗證" / "測試" | guard/verify ran | No verification happened |
+
+### Workflow Step Progression
+
+- Steps should generally progress in order (1 → 2 → 3 → ...)
+- Skipping a step → DEVIATION: "Step 2 hasn't been completed yet, cannot jump to Step 3"
+- Repeating a step → PROCEED with note: "Repeating Step 3 — previous attempt was discarded"
+- If all steps completed and iterations remain → cycle back to the most relevant step or signal completion
+
 ## Flow State File
 
 **Location:** `.autoresearch/flow.state.md`
