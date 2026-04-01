@@ -1,95 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Usage ────────────────────────────────────────────────────────
 usage() {
   cat <<'USAGE'
-Usage: setup-loop.sh --goal GOAL --scope SCOPE --metric METRIC --direction DIR --verify CMD [--guard CMD] [--max-iterations N] [--prompt PROMPT]
+Usage: setup-loop.sh --goal GOAL --prompt PROMPT [OPTIONS]
 
-Creates .claude/autoresearch-loop.local.md state file to activate the Stop hook loop.
+Creates .claude/autoresearch-loop.local.md to activate the Stop hook loop.
 
-Options:
-  --goal            What to improve (required)
-  --scope           File globs to modify (required)
-  --metric          Metric name (required)
-  --direction       "higher" or "lower" (required)
-  --verify          Shell command that produces the metric (required)
-  --guard           Shell command that must always pass (optional)
+Required:
+  --goal            What to achieve
+  --prompt          Full prompt to re-inject each iteration
+
+Optional:
+  --guard           Shell command that must always pass
+  --verify          Shell command that extracts a metric number
+  --direction       "higher" or "lower" (required if --verify set)
   --max-iterations  Stop after N iterations, 0 = unlimited (default: 0)
-  --prompt          Full prompt to re-inject each iteration (optional, auto-generated if omitted)
+  --completion-promise  Semantic exit condition text
   --evaluator       "on" or "off" (default: on)
-  --evaluate        Review focus areas for evaluator (optional)
   --max-rework      Max rework attempts on evaluator rejection (default: 2)
   -h, --help        Show this help
 USAGE
   exit 0
 }
 
-# ─── Argument Parsing ─────────────────────────────────────────────
-GOAL="" SCOPE="" METRIC="" DIRECTION="" VERIFY="" GUARD="" MAX_ITERATIONS=0 PROMPT="" EVALUATOR="on" EVALUATE="" MAX_REWORK="2"
+GOAL="" PROMPT="" GUARD="" VERIFY="" DIRECTION=""
+MAX_ITERATIONS=0 COMPLETION_PROMISE="null" EVALUATOR="on" MAX_REWORK="2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --goal)           GOAL="$2";           shift 2 ;;
-    --scope)          SCOPE="$2";          shift 2 ;;
-    --metric)         METRIC="$2";         shift 2 ;;
-    --direction)      DIRECTION="$2";      shift 2 ;;
-    --verify)         VERIFY="$2";         shift 2 ;;
-    --guard)          GUARD="$2";          shift 2 ;;
-    --max-iterations) MAX_ITERATIONS="$2"; shift 2 ;;
-    --prompt)         PROMPT="$2";         shift 2 ;;
-    --evaluator)      EVALUATOR="$2";      shift 2 ;;
-    --evaluate)       EVALUATE="$2";       shift 2 ;;
-    --max-rework)     MAX_REWORK="$2";     shift 2 ;;
-    -h|--help)        usage ;;
-    *)                echo "Unknown option: $1" >&2; exit 1 ;;
+    --goal)                GOAL="$2";                shift 2 ;;
+    --prompt)              PROMPT="$2";              shift 2 ;;
+    --guard)               GUARD="$2";               shift 2 ;;
+    --verify)              VERIFY="$2";              shift 2 ;;
+    --direction)           DIRECTION="$2";           shift 2 ;;
+    --max-iterations)      MAX_ITERATIONS="$2";      shift 2 ;;
+    --completion-promise)  COMPLETION_PROMISE="$2";  shift 2 ;;
+    --evaluator)           EVALUATOR="$2";           shift 2 ;;
+    --max-rework)          MAX_REWORK="$2";          shift 2 ;;
+    -h|--help)             usage ;;
+    *)                     echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
 
-# ─── Validation ───────────────────────────────────────────────────
-missing=()
-[[ -z "$GOAL" ]]      && missing+=("--goal")
-[[ -z "$SCOPE" ]]     && missing+=("--scope")
-[[ -z "$METRIC" ]]    && missing+=("--metric")
-[[ -z "$DIRECTION" ]] && missing+=("--direction")
-[[ -z "$VERIFY" ]]    && missing+=("--verify")
-
-if [[ ${#missing[@]} -gt 0 ]]; then
-  echo "Error: Missing required arguments: ${missing[*]}" >&2
+if [[ -z "$GOAL" ]]; then
+  echo "Error: --goal is required" >&2
   exit 1
 fi
-
-if [[ "$MAX_ITERATIONS" != "0" ]] && ! [[ "$MAX_ITERATIONS" =~ ^[0-9]+$ ]]; then
-  echo "Error: --max-iterations must be a positive integer or 0, got: $MAX_ITERATIONS" >&2
-  exit 1
-fi
-
-# ─── Build default prompt if not provided ─────────────────────────
 if [[ -z "$PROMPT" ]]; then
-  PROMPT="Continue the autoresearch autonomous loop.
-Goal: ${GOAL}
-Scope: ${SCOPE}
-Metric: ${METRIC}
-Direction: ${DIRECTION}
-Verify: ${VERIFY}"
-  if [[ -n "$GUARD" ]]; then
-    PROMPT="${PROMPT}
-Guard: ${GUARD}"
-  fi
-  PROMPT="${PROMPT}
-Evaluator: ${EVALUATOR}"
-  if [[ -n "$EVALUATE" ]]; then
-    PROMPT="${PROMPT}
-Evaluate: ${EVALUATE}"
-  fi
-  PROMPT="${PROMPT}
-Max-Rework: ${MAX_REWORK}"
-  PROMPT="${PROMPT}
-
-Read the autonomous loop protocol, check git log for recent experiments, review the results log, then execute the NEXT iteration. Do NOT re-run setup. Go directly to Phase 1 (Review) of the loop."
+  echo "Error: --prompt is required" >&2
+  exit 1
+fi
+if [[ "$MAX_ITERATIONS" != "0" ]] && ! [[ "$MAX_ITERATIONS" =~ ^[0-9]+$ ]]; then
+  echo "Error: --max-iterations must be a non-negative integer, got: $MAX_ITERATIONS" >&2
+  exit 1
 fi
 
-# ─── Escape values for YAML ──────────────────────────────────────
 yaml_escape() {
   local val="$1"
   if [[ "$val" == *$'\n'* ]] || [[ "$val" == *':'* ]] || [[ "$val" == *'"'* ]] || [[ "$val" == *"'"* ]]; then
@@ -99,9 +65,17 @@ yaml_escape() {
   fi
 }
 
-# ─── Create state file ───────────────────────────────────────────
-mkdir -p .claude
+if [[ -n "$COMPLETION_PROMISE" ]] && [[ "$COMPLETION_PROMISE" != "null" ]]; then
+  CP_YAML="\"$COMPLETION_PROMISE\""
+else
+  CP_YAML="null"
+fi
 
+FULL_PROMPT="MANDATORY FIRST STEP: Read .autoresearch/context.md before any action. If it doesn't exist yet, create it with initial state.
+
+${PROMPT}"
+
+mkdir -p .claude
 SESSION_ID="${CLAUDE_CODE_SESSION_ID:-unknown}"
 
 cat > .claude/autoresearch-loop.local.md <<EOF
@@ -111,45 +85,31 @@ iteration: 0
 session_id: ${SESSION_ID}
 max_iterations: ${MAX_ITERATIONS}
 goal: $(yaml_escape "$GOAL")
-scope: $(yaml_escape "$SCOPE")
-metric: $(yaml_escape "$METRIC")
-direction: ${DIRECTION}
-verify: $(yaml_escape "$VERIFY")
+completion_promise: ${CP_YAML}
 guard: $(yaml_escape "$GUARD")
+verify: $(yaml_escape "$VERIFY")
+direction: ${DIRECTION}
 evaluator: ${EVALUATOR}
-evaluate: $(yaml_escape "$EVALUATE")
 max_rework: ${MAX_REWORK}
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
-${PROMPT}
+${FULL_PROMPT}
 EOF
 
-# ─── Output ───────────────────────────────────────────────────────
 echo ""
 echo "🔬 Autoresearch loop activated!"
-echo "   Goal:           ${GOAL}"
-echo "   Scope:          ${SCOPE}"
-echo "   Metric:         ${METRIC} (${DIRECTION} is better)"
-echo "   Verify:         ${VERIFY}"
-if [[ -n "$GUARD" ]]; then
-  echo "   Guard:          ${GUARD}"
-fi
-echo "   Evaluator:      ${EVALUATOR}"
-if [[ -n "$EVALUATE" ]]; then
-  echo "   Evaluate:       ${EVALUATE}"
-fi
-echo "   Max-Rework:     ${MAX_REWORK}"
-if [[ "$MAX_ITERATIONS" -gt 0 ]]; then
-  echo "   Max iterations: ${MAX_ITERATIONS}"
-else
-  echo "   Max iterations: unlimited"
-fi
-echo "   Session:        ${SESSION_ID}"
+echo "   Goal:                ${GOAL}"
+if [[ -n "$GUARD" ]]; then echo "   Guard:              ${GUARD}"; fi
+if [[ -n "$VERIFY" ]]; then echo "   Verify:             ${VERIFY} (${DIRECTION} is better)"; fi
+echo "   Evaluator:          ${EVALUATOR}"
+echo "   Max-Rework:         ${MAX_REWORK}"
+if [[ "$MAX_ITERATIONS" -gt 0 ]]; then echo "   Max iterations:     ${MAX_ITERATIONS}"; else echo "   Max iterations:     unlimited"; fi
+if [[ "$COMPLETION_PROMISE" != "null" ]]; then echo "   Completion promise: ${COMPLETION_PROMISE}"; fi
+echo "   Session:            ${SESSION_ID}"
 echo ""
 echo "The Stop hook will keep this session looping until:"
-if [[ "$MAX_ITERATIONS" -gt 0 ]]; then
-  echo "  - ${MAX_ITERATIONS} iterations complete, OR"
-fi
+if [[ "$COMPLETION_PROMISE" != "null" ]]; then echo "  - Completion promise is fulfilled, OR"; fi
+if [[ "$MAX_ITERATIONS" -gt 0 ]]; then echo "  - ${MAX_ITERATIONS} iterations complete, OR"; fi
 echo "  - You run /autoresearch:cancel"
 echo ""
