@@ -1,106 +1,125 @@
 ---
 name: autoresearch
-description: Autonomous Goal-directed Iteration. Modify, verify, keep/discard, repeat. Apply to ANY task with a measurable metric.
-argument-hint: "[Goal: <text>] [Scope: <glob>] [Metric: <text>] [Direction: higher|lower] [Verify: <cmd>] [Guard: <cmd>] [--iterations N]"
+description: Autonomous Goal-directed Iteration. Modify, verify, keep/discard, repeat. Apply to ANY task.
+argument-hint: "\"Goal: <text> [Workflow: ...] [Notes: ...]\" [--max-iterations N] [--completion-promise TEXT] [--guard CMD] [--verify CMD] [--direction higher|lower] [--evaluator on|off]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---
 
-## Step 1: Argument Parsing (do this FIRST)
+## Step 1: Parse Arguments
 
-Extract these from $ARGUMENTS. Ignore prose and extract ONLY structured fields:
+Extract from $ARGUMENTS:
 
-- `Goal:` — text after "Goal:" keyword
-- `Scope:` or `--scope <glob>` — file globs after "Scope:" keyword
-- `Metric:` — text after "Metric:" keyword
-- `Direction:` — "higher" or "lower" after "Direction:" keyword
-- `Verify:` — shell command after "Verify:" keyword
-- `Guard:` — shell command after "Guard:" keyword (optional)
-- `Iterations:` or `--iterations` — integer N for bounded mode
+**From prompt text:**
+- `Goal:` — text after keyword (REQUIRED)
+- `Workflow:` — numbered steps after keyword (optional)
+- `Notes:` — bullet points after keyword (optional)
 
-For each field, record whether it was extracted or is MISSING.
+**From flags (may appear in $ARGUMENTS or as CLI flags):**
+- `--max-iterations N` (default: 0 = unlimited)
+- `--completion-promise "TEXT"` (default: none)
+- `--guard "CMD"` (default: none)
+- `--verify "CMD"` (default: none)
+- `--direction higher|lower` (required if --verify set)
+- `--evaluator on|off` (default: on)
+- `--max-rework N` (default: 2)
 
-## Step 2: Read Protocol
+**Also check for v2 format fields** (backward compat):
+- `Scope:`, `Metric:`, `Direction:`, `Verify:` — if all present, activate metric mode
 
-1. Read the autonomous loop protocol: `.claude/skills/autoresearch/references/autonomous-loop-protocol.md`
-2. Read the results logging format: `.claude/skills/autoresearch/references/results-logging.md`
+Record which fields were extracted and which are MISSING.
 
-## Step 3: Collect Missing Fields
+## Step 2: Collect Missing Fields
 
-**Check ALL 5 required fields:** Goal, Scope, Metric, Direction, Verify.
+If Goal is missing → ask via `AskUserQuestion`.
 
-**If ALL 5 are present** → skip to Step 4.
-
-**If ANY of the 5 required fields is MISSING** → you MUST collect them interactively. Follow the "Interactive Setup" section in SKILL.md exactly:
-
-1. Scan the project structure first (detect test framework, file layout, build tools)
-2. For EACH missing field, use `AskUserQuestion` to ask the user — provide smart defaults based on your scan
-3. Also ask about Guard (optional — user can skip) and Iterations (optional — default unlimited) if not provided inline
-4. **MANDATORY — after collecting all fields, display the complete config:**
+For ALL other fields, show them in one batch for the user to fill or skip:
 
 ```
-Configuration Summary:
-  Goal:       <value>
-  Scope:      <value>
-  Metric:     <value>
-  Direction:  <value>
-  Verify:     <value>
-  Guard:      <value or "none">
-  Iterations: <value or "unlimited">
+Please configure the autoresearch loop:
 
-Ready to launch? [Launch / Edit / Cancel]
+1. Goal (required): [pre-filled or ___]
+2. Workflow (steps per iteration, Enter to skip):
+3. Notes (constraints/rules, Enter to skip):
+4. Guard (shell command that must pass, Enter to skip):
+5. Verify + Direction (metric command + higher/lower, Enter to skip):
+6. Max Iterations (number, Enter to skip → unlimited):
+7. Completion Promise (exit condition text, Enter to skip):
+8. Evaluator (on/off, Enter to skip → on):
 ```
 
-Use `AskUserQuestion` to ask user to confirm. If "Edit" → ask which field to change. If "Cancel" → stop. If "Launch" → proceed to Step 4.
+Pre-fill any fields already extracted from $ARGUMENTS. Only ask about missing ones.
 
-**YOU MUST NOT proceed to Step 4 without ALL 5 required fields AND user confirmation.**
+## Step 3: Show Confirmation
 
-## Step 4: Validate Config (Mechanical Check)
+Display the complete config and ask for confirmation:
 
-Run the validation script. This checks git status, scope globs, and dry-runs the verify and guard commands:
+```
+📋 Configuration Summary:
+
+  Goal:                <value>
+  Workflow:            <steps or "default — Coordinator decides">
+  Notes:               <items or "none">
+  Guard:               <command or "none">
+  Verify:              <command or "none">
+  Direction:           <value or "n/a">
+  Evaluator:           <on or off>
+  Max-Rework:          <N>
+  Max Iterations:      <N or "unlimited">
+  Completion Promise:  <text or "none">
+
+  Agent Team:
+    - Coordinator: manage loop, dispatch agents, update knowledge
+    - Research:    analyze data, find root causes
+    - Dev:         implement solutions, commit, verify
+    - Evaluator:   independent quality review
+
+  ⚠️  Warnings (if any):
+    - No exit criteria set — loop runs forever until /autoresearch:cancel
+    - No guard set — no regression protection
+
+Ready? [Launch / Edit / Cancel]
+```
+
+If "Edit" → ask which field, re-collect, show summary again.
+If "Cancel" → stop.
+If "Launch" → proceed.
+
+## Step 4: Validate
+
+Run validation with provided fields only:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh" \
   --goal "<GOAL>" \
-  --scope "<SCOPE>" \
-  --metric "<METRIC>" \
-  --direction "<DIRECTION>" \
-  --verify "<VERIFY>" \
-  --guard "<GUARD>"
+  [--guard "<GUARD>" if set] \
+  [--verify "<VERIFY>" --direction "<DIR>" if set] \
+  [--evaluator "<EVALUATOR>" if set]
 ```
 
-**If validation FAILS:**
-- Show the user the error message
-- Ask which field they want to fix
-- Go back to Step 3 to re-collect the failed field
-- Re-run validation
+If fails → show error, ask to fix, re-validate.
 
-**If validation PASSES:** proceed to Step 5.
+## Step 5: Activate Loop
 
-## Step 5: Activate the Stop Hook
-
-Run the setup script to create the loop state file:
+Build the prompt from Goal + Workflow + Notes, then run setup:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh" \
   --goal "<GOAL>" \
-  --scope "<SCOPE>" \
-  --metric "<METRIC>" \
-  --direction "<DIRECTION>" \
-  --verify "<VERIFY>" \
-  --guard "<GUARD>" \
-  --max-iterations <N or 0>
+  --prompt "<FULL_PROMPT_TEXT>" \
+  [--guard "<GUARD>" if set] \
+  [--verify "<VERIFY>" --direction "<DIR>" if set] \
+  --max-iterations <N or 0> \
+  [--completion-promise "<PROMISE>" if set] \
+  --evaluator "<EVALUATOR>" \
+  --max-rework <N>
 ```
 
-## Step 6: Execute the Autonomous Loop
+## Step 6: Begin Iteration 1
 
-Enter the loop: Modify → Verify → Keep/Discard → Repeat.
+Read `references/coordinator-protocol.md` then start the first iteration:
+1. Create `.autoresearch/context.md` with initial state
+2. Follow your Workflow (or decide autonomously)
+3. Dispatch agents as needed
+4. Update context.md at the end
 
-If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
-
-Stream all output live. Never stop early unless goal achieved or max_iterations reached.
-
-## Stop Hook Behavior
-
-Once Step 5 creates the state file, the Stop hook is active. If you try to exit, the hook will block the exit and re-inject the loop prompt. To stop: user runs `/autoresearch:cancel` or max iterations are reached.
-
-Do NOT attempt to remove the state file yourself.
+The Stop Hook is now active. When you exit, it will re-inject the prompt for the next iteration.

@@ -1,32 +1,26 @@
 ---
 name: autoresearch:scenario
-description: Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario using autonomous iteration.
-argument-hint: "[scenario description] [--scope <glob>] [--depth shallow|standard|deep] [--domain <type>] [--format <type>] [--focus <area>] [--iterations N]"
+description: Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario
+argument-hint: "[Scenario description] [--domain TYPE] [--depth LEVEL] [--focus AREA]"
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---
 
-EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
+## Workflow Preset: Scenario Exploration
 
-## Argument Parsing (do this FIRST)
+Pre-filled Workflow:
+```
+1. Read context and parse seed scenario — identify actors, goals, preconditions
+2. Decompose into 12 exploration dimensions (happy path, error, edge case, abuse, scale, concurrent, temporal, data variation, permission, integration, recovery, state transition)
+3. Generate one concrete situation from an unexplored dimension
+4. Classify situation — new, variant, duplicate, or out-of-scope
+5. Expand kept situations — derive edge cases, what-ifs, failure modes
+6. Record scenarios in context with dimension and severity
+7. Pick next unexplored dimension for next iteration
+```
 
-Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
+**Default config:**
+- Evaluator: off (scenarios are exploratory, not code changes)
 
-- `--domain <type>` or `Domain:` — software, product, business, security, marketing
-- `--depth <level>` or `Depth:` — shallow (10 iterations), standard (25), deep (50+)
-- `--scope <glob>` or `Scope:` — file globs
-- `--format <type>` — use-cases, user-stories, test-scenarios, threat-scenarios
-- `--focus <area>` — edge-cases, failures, security, scale
-- `Iterations:` or `--iterations N` — integer for bounded mode (CRITICAL: run exactly N iterations then stop). Overrides depth preset.
-- `Scenario:` — text after "Scenario:" keyword
+Load `references/scenario-workflow.md` for the full scenario protocol, then follow `commands/autoresearch.md` Step 2+ with Workflow pre-filled.
 
-All remaining text not matching flags is the scenario description.
-
-If `Iterations: N` or `--iterations N` is found, set `max_iterations = N`. Track `current_iteration`. After N, STOP.
-
-## Execution
-
-1. Read the scenario workflow: `.claude/skills/autoresearch/references/scenario-workflow.md`
-2. If scenario or domain is missing — use `AskUserQuestion` with adaptive questions per scenario-workflow.md
-3. Execute the 7-phase scenario loop
-4. If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
-
-Stream all output live — never run in background.
+Parse $ARGUMENTS for the seed scenario as the Goal. Pass --domain, --depth, --focus flags through to Notes.

@@ -1,33 +1,27 @@
 ---
 name: autoresearch:ship
-description: Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured 8-phase workflow
-argument-hint: "[--dry-run] [--auto] [--force] [--rollback] [--monitor N] [--type <type>] [--target <path>] [--checklist-only] [--iterations N]"
+description: Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured phases
+argument-hint: "[What to ship] [--type TYPE] [--dry-run] [--auto] [--monitor N]"
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---
 
-EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
+## Workflow Preset: Ship
 
-## Argument Parsing (do this FIRST)
+Pre-filled Workflow:
+```
+1. Read context and identify what is being shipped
+2. Assess current readiness — inventory gaps and blockers
+3. Generate domain-specific pre-ship checklist
+4. Fix failing checklist items (one per iteration)
+5. Dry-run the ship action without side effects
+6. Execute the actual delivery (merge, deploy, publish)
+7. Post-ship health check — verify it landed
+8. Record shipment in context
+```
 
-Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
+**Default config:**
+- Evaluator: off (shipping checklist is mechanical verification)
 
-- `--dry-run` — validate everything but don't ship
-- `--auto` — auto-approve if no errors
-- `--force` — skip non-critical items (blockers enforced)
-- `--rollback` — undo last ship action
-- `--monitor N` — post-ship monitoring for N minutes
-- `--type <type>` — override auto-detection (code-pr, code-release, deployment, content, etc.)
-- `--checklist-only` — only generate checklist
-- `--target <path>` or `Target:` — what to ship (path, PR, artifact)
-- `Iterations:` or `--iterations N` — bounded preparation iterations (CRITICAL: run exactly N prep iterations then ship)
+Load `references/ship-workflow.md` for the full shipping protocol, then follow `commands/autoresearch.md` Step 2+ with Workflow pre-filled.
 
-If `Iterations: N` or `--iterations N` is found, set `max_iterations = N` for the preparation loop.
-
-All remaining text in $ARGUMENTS is additional context — use it to understand what's being shipped but do not treat it as flags.
-
-## Execution
-
-1. Read the ship workflow: `.claude/skills/autoresearch/references/ship-workflow.md`
-2. If ship type is unclear — use `AskUserQuestion` with batched questions per ship-workflow.md
-3. Execute the 8-phase ship workflow
-
-Stream all output live — never run in background.
+Parse $ARGUMENTS for what to ship as the Goal. Pass --type, --dry-run, --auto, --monitor flags through to Notes.
