@@ -64,6 +64,7 @@ For ALL commands, before launching:
 | Agent | Role | Protocol |
 |-------|------|----------|
 | **Coordinator** (you) | Orchestrate loop, dispatch agents, manage knowledge | `references/coordinator-protocol.md` |
+| **Flow Reviewer** | Pre-action gate, flow enforcement, deviation reporting | `references/flow-reviewer-protocol.md` |
 | **Research** | Analyze, investigate, diagnose | `references/research-agent-protocol.md` |
 | **Dev** | Implement, commit, verify | `references/dev-agent-protocol.md` |
 | **Evaluator** | Independent review, challenge assumptions | `references/evaluator-protocol.md` |
@@ -71,6 +72,7 @@ For ALL commands, before launching:
 **Read your protocol file** at the start of the first iteration.
 
 **Trust boundaries:**
+- Flow Reviewer output → Coordinator must comply (High trust)
 - Research output → Coordinator verifies evidence exists
 - Dev output → Evaluator reviews independently
 - Evaluator output → Coordinator makes final decision
@@ -80,12 +82,14 @@ For ALL commands, before launching:
 ```
 LOOP:
   1. Read .autoresearch/context.md (mandatory — knowledge from past iterations)
-  2. Decide: what does this iteration do? (from Workflow or autonomous)
-  3. Dispatch: Research / Dev / Evaluator as needed
-  4. Review: check subagent outputs — never blindly trust
-  5. Decide: Keep / Discard / Rework
-  6. Update: .autoresearch/context.md + memory (if cross-session finding)
+  2. Ask Flow Reviewer → Decide: what does this iteration do?
+  3. Ask Flow Reviewer → Dispatch: Research / Dev / Evaluator as needed
+  4. Ask Flow Reviewer → Review: check subagent outputs
+  5. Ask Flow Reviewer → Decide: Keep / Discard / Rework
+  6. Ask Flow Reviewer → Update: context.md + knowledge.md + memory
   7. Exit → Hook re-injects → next iteration
+
+  Flow Reviewer is dispatched BEFORE every phase. See references/flow-reviewer-protocol.md.
 ```
 
 ## Knowledge System
@@ -93,8 +97,9 @@ LOOP:
 See `references/knowledge-system.md` for full protocol.
 
 - **L1: Hook prompt** — guaranteed every iteration (user's original prompt)
-- **L2: .autoresearch/context.md** — living document, updated every iteration
-- **L3: Memory** — cross-session persistence for important discoveries
+- **L2: .autoresearch/context.md** — current state + next action, updated every iteration
+- **L3: .autoresearch/knowledge.md** — cumulative domain findings, organized by topic
+- **L4: Memory** — cross-session persistence for important discoveries
 
 ## Exit Criteria
 
@@ -108,13 +113,14 @@ Hook checks in order:
 
 ## Critical Rules
 
-1. **Read context first** — Every iteration starts by reading `.autoresearch/context.md`
-2. **Dispatch, don't do** — Coordinator orchestrates, subagents execute
-3. **Trust but verify** — Review subagent output for evidence and quality
-4. **One change per iteration** — Atomic. If it breaks, you know why
-5. **Git is memory** — Commit before verify, `git revert` (not reset) on failure
-6. **Update knowledge** — End every iteration by updating context.md
-7. **Autonomous decisions** — Never ask user except for missing access/permissions
+1. **Ask Flow Reviewer first** — Dispatch Flow Reviewer before every phase transition
+2. **Read context first** — Every iteration starts by reading `.autoresearch/context.md`
+3. **Dispatch, don't do** — Coordinator orchestrates, subagents execute
+4. **Trust but verify** — Review subagent output for evidence and quality
+5. **One change per iteration** — Atomic. Enforced by `flow-check.sh commit-count`
+6. **Git is memory** — Commit before verify, `git revert` (not reset) on failure
+7. **Update knowledge** — End every iteration by updating context.md + knowledge.md
+8. **Autonomous decisions** — Never ask user except for missing access/permissions
 
 ## Backward Compatibility
 
