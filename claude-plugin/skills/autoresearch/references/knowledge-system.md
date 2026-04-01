@@ -1,6 +1,13 @@
 # Knowledge System Protocol
 
-Autoresearch uses a 3-layer knowledge system to ensure context is preserved across iterations and sessions.
+Autoresearch uses a 4-layer knowledge system to ensure context is preserved across iterations and sessions.
+
+| Layer | File | Scope | Updated |
+|-------|------|-------|---------|
+| L1 | Hook prompt | User's original prompt | Every iteration (by hook) |
+| L2 | `.autoresearch/context.md` | Current state + next action | End of every iteration |
+| L3 | `.autoresearch/knowledge.md` | Cumulative domain findings | When reusable finding discovered |
+| L4 | Memory (`~/.claude/projects/*/memory/`) | Cross-project learnings | When finding generalizes beyond project |
 
 ## Layer 1: Hook Prompt (Guaranteed Injection)
 
@@ -37,13 +44,6 @@ Brief description of where things stand right now. 2-3 sentences max.
 - [x] Issue → fix applied (iteration N)
 - [x] Issue → fix applied (iteration N)
 
-## Effective Strategies
-- Strategy → result achieved
-- Strategy → result achieved
-
-## Ineffective Strategies
-- Strategy → why it failed (commit: <hash>, reverted)
-
 ## Next Priority
 What to focus on in the next iteration and why.
 ```
@@ -55,7 +55,7 @@ What to focus on in the next iteration and why.
 3. **Resolved cap:** keep only the 5 most recent resolved items; remove older ones
 4. **Size limit:** keep total under ~1000 words. Summarize aggressively.
 5. **Each entry is a summary** — not a detailed log. One line per item.
-6. **Ineffective strategies include commit hash** — so future iterations can inspect the reverted change via `git show <hash>`
+6. **Reverted changes:** note commit hash in Active Issues — so future iterations can inspect via `git show <hash>`
 
 ### First Iteration Bootstrap
 
@@ -74,17 +74,58 @@ Initial state. [Describe what was observed on first read.]
 ## Resolved This Session
 (none yet)
 
-## Effective Strategies
-(none yet)
-
-## Ineffective Strategies
-(none yet)
-
 ## Next Priority
 [Based on first analysis.]
 ```
 
-## Layer 3: Memory (Cross-Session Persistence)
+## Layer 3: .autoresearch/knowledge.md (Cumulative Findings)
+
+**Location:** `.autoresearch/knowledge.md` in the project root.
+
+**Created by:** Coordinator at the first iteration if it doesn't exist.
+
+**Updated by:** Coordinator during UPDATE_KNOWLEDGE phase.
+
+### Purpose
+
+Cumulative domain knowledge organized by topic. Unlike context.md (which tracks current state), knowledge.md accumulates **reusable findings** across all rounds. Entries are facts learned, not actions taken.
+
+### Format
+
+```markdown
+# Autoresearch Knowledge
+
+## [Topic Area]
+- Finding with evidence — specific data or commit hash (commit abc1234)
+- Another finding — measurement or observation
+
+## [Another Topic]
+- Finding — evidence
+```
+
+### Write Rules
+
+1. **Categorize by domain topic** — not by round or iteration
+2. **Each entry is a reusable finding** — "what we learned", not "what we did"
+3. **Include evidence** — concrete data, measurements, or commit hashes
+4. **Update contradicted entries** — if a new finding contradicts an old one, update or remove the old entry
+5. **No duplication** — before adding, check if the finding already exists in another form
+
+### First Iteration Bootstrap
+
+If `.autoresearch/knowledge.md` does not exist:
+
+```markdown
+# Autoresearch Knowledge
+
+(Findings will be added as the session progresses)
+```
+
+### Flow Reviewer Check
+
+During UPDATE_KNOWLEDGE, the Flow Reviewer checks whether new entries were added to knowledge.md. If no entries were added, it reminds the Coordinator to review the iteration's findings for anything reusable.
+
+## Layer 4: Memory (Cross-Session Persistence)
 
 Uses the project's `.claude/projects/*/memory/` system (auto memory).
 
