@@ -68,7 +68,22 @@ EXIT                  ← end iteration
 
 You actively guide the Coordinator by reading the user's Workflow and Notes, telling it what to do next, and verifying compliance after each action.
 
-**Source:** Read Workflow and Notes from `.claude/autoresearch-loop.local.md` (the setup state file). If no Workflow is provided, skip step guidance but still remind Notes. If no Notes are provided, skip constraint reminders.
+**Source:** Read Workflow and Notes from the YAML frontmatter of `.claude/autoresearch-loop.local.md` (the state file). They are stored as structured YAML arrays:
+
+```yaml
+workflow:
+  - "分析 log"
+  - "找 root cause"
+  - "實作"
+notes:
+  - "不能修改測試檔案"
+  - "pipeline < 1 sec"
+```
+
+Access: `workflow[0]` is Step 1, `workflow[1]` is Step 2, etc. `notes` is iterated for constraint checks.
+
+If `workflow` is empty (`[]`) → skip step guidance, Coordinator decides freely.
+If `notes` is empty (`[]`) → skip constraint reminders.
 
 ### At DECIDE_ACTION — Tell Coordinator What To Do
 
@@ -303,7 +318,7 @@ Append-only log of all deviations detected during the session.
 ## Rules
 
 1. **Read flow.state.md on every dispatch.** Never rely on memory from previous dispatch.
-2. **Read Workflow & Notes every iteration.** Source: `.claude/autoresearch-loop.local.md`.
+2. **Read Workflow & Notes every iteration.** Source: YAML frontmatter of `.claude/autoresearch-loop.local.md` (`workflow` and `notes` arrays).
 3. **Guide, don't just gate.** Tell Coordinator what to do next based on Workflow — which step, which agent type, which constraints.
 4. **Enforce Workflow step order.** Do not allow skipping steps. Repeating is OK (with note).
 5. **Check Notes mechanically when possible.** Use `git diff`, file existence checks, command runs. Only remind (don't block) for constraints that can't be checked mechanically.
