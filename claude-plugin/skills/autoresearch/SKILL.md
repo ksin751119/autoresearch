@@ -10,20 +10,34 @@ Autonomous iteration engine. Define a goal, optionally a workflow, and let the a
 
 ## Quick Start
 
+**Option 1: Interactive wizard (recommended)**
 ```
-/autoresearch "
-Goal: <what to achieve>
+/autoresearch:setup "your goal here"
+```
+The wizard asks one question at a time and generates `.autoresearch/config.yaml`.
 
-Workflow:
-1. <step 1>
-2. <step 2>
+**Option 2: Write config manually**
+```yaml
+# .autoresearch/config.yaml
+goal: "what to achieve"
 
-Notes:
-- <constraint>
-" --max-iterations 10 --completion-promise "Done"
+workflow:
+  - step 1
+  - step 2
+
+notes:
+  - constraint
+
+max_iterations: 10
+completion_promise: "Done"
 ```
 
-**Goal** is the only required field. Everything else is optional.
+Then run:
+```
+/autoresearch --config .autoresearch/config.yaml
+```
+
+**`goal` is the only required field.** Everything else is optional.
 
 ## MANDATORY: Setup Confirmation
 
@@ -47,17 +61,22 @@ For ALL commands, before launching:
 
 **Never skip confirmation.** Even if all fields are provided inline.
 
-## Config Flags
+## Config Fields
 
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `--max-iterations N` | unlimited | Count-based exit |
-| `--completion-promise "TEXT"` | none | Semantic exit — output `<promise>TEXT</promise>` when true |
-| `--guard "CMD"` | none | Regression check (must pass every iteration) |
-| `--verify "CMD"` | none | Metric extraction command |
-| `--direction higher\|lower` | (with verify) | Metric direction |
-| `--evaluator on\|off` | on | Enable/disable Evaluator |
-| `--max-rework N` | 2 | Rework attempts before discard |
+All fields are set in `.autoresearch/config.yaml`. Only `goal` is required.
+
+| Field | Type | Default | Purpose |
+|-------|------|---------|---------|
+| `goal` | string | **(required)** | What to achieve |
+| `workflow` | list | Coordinator decides | Ordered steps per iteration |
+| `notes` | list | none | Constraints for Flow Reviewer to enforce |
+| `max_iterations` | integer | unlimited | Count-based exit |
+| `completion_promise` | string | none | Semantic exit — output `<promise>TEXT</promise>` when true |
+| `guard` | string | none | Shell command — regression check (must pass every iteration) |
+| `verify` | string | none | Shell command — metric extraction |
+| `direction` | `higher`/`lower` | (with verify) | Metric direction |
+| `evaluator` | `on`/`off` | `on` | Enable/disable Evaluator |
+| `max_rework` | integer | `2` | Rework attempts before discard |
 
 ## Agent Team
 
@@ -140,6 +159,7 @@ Sub-skills are workflow presets that pre-fill the Workflow field:
 | `/autoresearch:predict` | Multi-persona analysis | `references/predict-workflow.md` |
 | `/autoresearch:learn` | Docs generation | `references/learn-workflow.md` |
 | `/autoresearch:plan` | Config wizard | `references/plan-workflow.md` |
+| `/autoresearch:setup` | Interactive YAML config wizard | `references/setup-workflow.md` |
 
 ## Superpowers Integration (Auto-Resolve)
 
