@@ -51,6 +51,12 @@ if ! command -v gh &>/dev/null; then
   exit 1
 fi
 
+# Ensure gh has a default repo set
+if ! gh repo view --json nameWithOwner -q .nameWithOwner &>/dev/null; then
+  echo "Setting default remote for gh CLI..."
+  gh repo set-default
+fi
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Error: Working tree is dirty. Commit or stash changes first."
   exit 1
