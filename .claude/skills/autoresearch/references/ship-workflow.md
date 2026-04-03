@@ -3,6 +3,7 @@
 Universal shipping workflow that applies autoresearch loop principles to the last mile — taking anything from "done" to "deployed/published/delivered." Works for code, content, marketing, sales, research, design, or any artifact that needs to reach its audience.
 
 **Core idea:** Shipping has a universal pattern regardless of domain. Identify → Checklist → Prepare → Dry-run → Ship → Verify → Log.
+**Evaluator default:** `off` — uses checklist workflow, not iteration loop.
 
 ## Trigger
 
