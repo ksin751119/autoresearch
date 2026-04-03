@@ -1,6 +1,6 @@
 ---
 name: autoresearch:security
-description: Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas
+description: "Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas. Use when: \"security audit\", \"threat model\", \"find vulnerabilities\", \"OWASP\", \"STRIDE\", \"red-team\"."
 argument-hint: "[--diff] [--fix] [--fail-on <severity>] [--scope <glob>] [--depth <level>] [--iterations N]"
 ---
 

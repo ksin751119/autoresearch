@@ -1,6 +1,6 @@
 ---
 name: autoresearch:ship
-description: Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured 8-phase workflow
+description: "Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured phases. Use when: \"ship it\", \"deploy this\", \"publish\", \"launch\", \"release\", \"push to prod\"."
 argument-hint: "[--dry-run] [--auto] [--force] [--rollback] [--monitor N] [--type <type>] [--target <path>] [--checklist-only] [--iterations N]"
 ---
 
