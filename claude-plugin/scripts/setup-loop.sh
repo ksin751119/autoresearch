@@ -81,6 +81,7 @@ lines.append(f'evaluator: {evaluator}')
 lines.append(f'max_rework: {max_rework}')
 lines.append('commit_before: ""')
 lines.append('workflow_step: 0')
+lines.append('previous_outcome: null')
 
 if workflow:
     lines.append('workflow:')
