@@ -132,7 +132,6 @@ See `references/knowledge-system.md` for full protocol.
 | Workflow presets | debug, fix, security, ship, scenario, predict, learn, plan, setup | When specific sub-skill invoked |
 | Output templates | security-output, predict-knowledge, learn-output, debug-reference-material, ship-domain-tables | When creating output files |
 | Shared patterns | interactive-setup-pattern, core-principles, knowledge-system | As needed during setup or iteration |
-| Legacy (v2) | autonomous-loop-protocol, results-logging, ml-metric-examples | Only when v2 inline config detected |
 
 ## Exit Criteria
 
