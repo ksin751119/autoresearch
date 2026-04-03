@@ -56,7 +56,11 @@ elif evaluator is False:
 else:
     evaluator = str(evaluator)
 max_rework = cfg.get('max_rework', 2)
+
 if max_rework is None: max_rework = 2
+
+def esc(s):
+    return s.replace('\\', '\\\\').replace('"', '\\"')
 
 # Build YAML frontmatter
 lines = []
@@ -65,30 +69,30 @@ lines.append('active: true')
 lines.append('iteration: 0')
 lines.append(f'session_id: {session_id}')
 lines.append(f'max_iterations: {max_iter}')
-lines.append(f'goal: "{goal}"')
+lines.append(f'goal: "{esc(goal)}"')
 if promise:
-    lines.append(f'completion_promise: "{promise}"')
+    lines.append(f'completion_promise: "{esc(promise)}"')
 else:
     lines.append('completion_promise: null')
-lines.append(f'guard: "{guard}"')
-lines.append(f'verify: "{verify}"')
+lines.append(f'guard: "{esc(guard)}"')
+lines.append(f'verify: "{esc(verify)}"')
 lines.append(f'direction: {direction}')
 lines.append(f'evaluator: {evaluator}')
 lines.append(f'max_rework: {max_rework}')
-lines.append(f'commit_before: ""')
-lines.append(f'workflow_step: 0')
+lines.append('commit_before: ""')
+lines.append('workflow_step: 0')
 
 if workflow:
     lines.append('workflow:')
     for step in workflow:
-        lines.append(f'  - "{step}"')
+        lines.append(f'  - "{esc(step)}"')
 else:
     lines.append('workflow: []')
 
 if notes:
     lines.append('notes:')
     for note in notes:
-        lines.append(f'  - "{note}"')
+        lines.append(f'  - "{esc(note)}"')
 else:
     lines.append('notes: []')
 
@@ -119,6 +123,7 @@ print('\n'.join(lines))
 PYEOF
 
 # Read back for display
+# SAFETY: python3 outputs KEY=shlex.quote(VALUE) — safe for eval
 eval "$(python3 - "$CONFIG" <<'PYEOF'
 import yaml, sys, shlex
 
