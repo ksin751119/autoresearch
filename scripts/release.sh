@@ -146,6 +146,11 @@ if [[ -d ".claude/skills/autoresearch" ]]; then
   cp .claude/skills/autoresearch/references/*.md claude-plugin/skills/autoresearch/references/
   echo "    Synced claude-plugin/skills/autoresearch/"
 fi
+if [[ -d "claude-plugin/scripts" ]]; then
+  mkdir -p claude-plugin/skills/autoresearch/scripts
+  cp claude-plugin/scripts/*.sh claude-plugin/skills/autoresearch/scripts/
+  echo "    Synced claude-plugin/skills/autoresearch/scripts/"
+fi
 
 # --- Doc review prompt ---
 echo ""
