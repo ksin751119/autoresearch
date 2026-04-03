@@ -173,4 +173,5 @@ Sub-skills are workflow presets that pre-fill the Workflow field:
 
 ## Superpowers Integration (Auto-Resolve)
 
-During the loop, use superpowers skills in auto-resolve mode: select approaches yourself, approve plans yourself, execute autonomously. The Evaluator subagent replaces human review.
+See `references/coordinator-protocol.md` "Superpowers Integration (Auto-Resolve Mode)" for full scope.
+Auto-resolve applies to human preference choices only — not Pre-Dev Gate BLOCKs, Post-iteration Review FAILs, or Evaluator fail verdicts.

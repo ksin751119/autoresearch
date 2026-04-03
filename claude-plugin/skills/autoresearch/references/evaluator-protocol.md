@@ -32,7 +32,7 @@ Return strict JSON:
 ```json
 {
   "verdict": "pass",
-  "severity": "minor",
+  "severity": "",
   "severity_rationale": "",
   "critique": "",
   "suggestions": [],
@@ -62,6 +62,7 @@ Or on failure:
 | `critical` | Will definitely break production, or violates Notes constraints | Yes |
 | `major` | Logic error that may trigger under certain conditions, or contradicts knowledge.md findings | Yes |
 | `minor` | Edge case, performance, readability | **No — minor MUST NOT trigger fail** |
+| _(pass)_ | verdict is pass — no issue to rate | Leave `severity: ""` |
 
 When assigning severity, `severity_rationale` MUST explain concrete impact. "Could overflow" is not enough — specify what input range triggers it and whether that range is reachable in practice.
 

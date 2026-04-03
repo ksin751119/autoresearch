@@ -40,6 +40,8 @@ In these situations, you MUST dispatch the Research Agent — do NOT analyze log
 
 **Why this matters:** After a failed iteration, you already have a hypothesis that turned out wrong. Analyzing the same logs yourself risks confirmation bias — you'll see what supports your existing theory. A fresh Research Agent dispatch provides independent analysis.
 
+> **Condition 1 is automatically enforced** — you don't need to check it manually. If you forget, Pre-Dev Gate will BLOCK and flow-check.sh will reject the iteration exit. Conditions 2-3 require your judgment; no script checks them.
+
 ### 4. Pre-Dev Gate + Dev (when implementation needed)
 
 **Before dispatching Dev, you MUST dispatch the Pre-Dev Gate agent:**
