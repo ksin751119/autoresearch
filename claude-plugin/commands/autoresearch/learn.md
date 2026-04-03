@@ -1,6 +1,6 @@
 ---
 name: autoresearch:learn
-description: Autonomous codebase documentation engine — scout, learn, generate/update docs with validation-fix loop
+description: "Autonomous codebase documentation engine — scout, learn, generate/update docs with validation-fix loop. Use when: \"learn this codebase\", \"generate docs\", \"document this project\", \"update docs\", \"docs health\"."
 argument-hint: "[--mode MODE] [--scope GLOB] [--depth LEVEL] [--file NAME]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---

@@ -1,6 +1,6 @@
 ---
 name: autoresearch:security
-description: Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas
+description: "Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas. Use when: \"security audit\", \"threat model\", \"find vulnerabilities\", \"OWASP\", \"STRIDE\", \"red-team\"."
 argument-hint: "[Scope/Focus description] [--max-iterations N] [--diff] [--fix] [--fail-on SEVERITY]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---

@@ -1,6 +1,6 @@
 ---
 name: autoresearch:predict
-description: Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation
+description: "Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation. Use when: \"predict\", \"multi-perspective\", \"swarm analysis\", \"analyze from different angles\"."
 argument-hint: "[Scope/Goal] [--personas N] [--rounds N] [--depth LEVEL] [--chain TARGETS]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---

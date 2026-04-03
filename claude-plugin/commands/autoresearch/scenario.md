@@ -1,6 +1,6 @@
 ---
 name: autoresearch:scenario
-description: Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario
+description: "Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario. Use when: \"explore scenarios\", \"generate use cases\", \"what could go wrong\", \"edge cases for\", \"stress test this\"."
 argument-hint: "[Scenario description] [--domain TYPE] [--depth LEVEL] [--focus AREA]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---

@@ -1,6 +1,6 @@
 ---
 name: autoresearch:debug
-description: Autonomous bug-hunting loop — scientific method + autoresearch iteration. Finds ALL bugs, not just one.
+description: "Autonomous bug-hunting loop — scientific method + autoresearch iteration. Finds ALL bugs, not just one. Use when: \"find all bugs\", \"hunt bugs\", \"debug this\", \"why is this failing\", \"investigate\"."
 argument-hint: "[Issue/Symptom description] [--max-iterations N] [--completion-promise TEXT]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---

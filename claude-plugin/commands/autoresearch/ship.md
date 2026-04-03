@@ -1,6 +1,6 @@
 ---
 name: autoresearch:ship
-description: Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured phases
+description: "Universal shipping workflow — ship code, content, marketing, sales, research, or anything through structured phases. Use when: \"ship it\", \"deploy this\", \"publish this\", \"launch this\", \"release this\", \"push to prod\"."
 argument-hint: "[What to ship] [--type TYPE] [--dry-run] [--auto] [--monitor N]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
 ---
