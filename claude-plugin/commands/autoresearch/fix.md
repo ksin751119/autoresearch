@@ -1,24 +1,32 @@
 ---
 name: autoresearch:fix
-description: "Autonomous fix loop — iteratively repairs errors until zero remain. One fix per iteration, atomic, auto-reverted on failure. Use when: \"fix all errors\", \"make tests pass\", \"fix the build\", \"clean up errors\"."
-argument-hint: "[Target errors description] [--max-iterations N]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
+description: Autonomous fix loop — iteratively repairs errors until zero remain. One fix per iteration, atomic, auto-reverted on failure.
+argument-hint: "[--target <cmd>] [--guard <cmd>] [--scope <glob>] [--category <type>] [--skip-lint] [--from-debug] [--iterations N]"
 ---
 
-## Workflow Preset: Fix
+EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
 
-Pre-filled Workflow:
-```
-1. Read context and list all current errors (tests, types, lint, build)
-2. Pick the highest-impact error
-3. Analyze root cause
-4. Implement minimal fix
-5. Run full test/build suite to verify fix + no regressions
-6. Record fix in context
-```
+## Argument Parsing (do this FIRST)
 
-**Default config:**
-- Evaluator: on
-- Guard: (detected from project — npm test, pytest, etc.)
+Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
 
-Load `references/fix-workflow.md` for the full fix protocol, then follow `commands/autoresearch.md` Step 2+ with Workflow pre-filled.
+- `--target <cmd>` or `Target:` — explicit verify command
+- `--guard <cmd>` or `Guard:` — safety command that must always pass
+- `--scope <glob>` or `Scope:` — file globs to fix
+- `--category <type>` — only fix: test, type, lint, or build
+- `--skip-lint` — skip lint fixes, focus on tests/types/build only
+- `--from-debug` — read findings from latest debug session
+- `Iterations:` or `--iterations N` — integer for bounded mode (CRITICAL: run exactly N iterations then stop)
+
+If `Iterations: N` or `--iterations N` is found, set `max_iterations = N`. Track `current_iteration` starting at 0. After iteration N, print final summary and STOP. Also stops when error count = 0.
+
+All remaining text in $ARGUMENTS is additional context — use it to understand the problem but do not treat it as flags.
+
+## Execution
+
+1. Read the fix workflow: `.claude/skills/autoresearch/references/fix-workflow.md`
+2. If target and scope are missing — use `AskUserQuestion` with batched questions per fix-workflow.md
+3. Execute the 8-phase fix loop: ONE fix per iteration, never suppress errors, auto-revert on regression
+4. If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
+
+Stream all output live — never run in background.

@@ -1,30 +1,31 @@
 ---
 name: autoresearch:debug
-description: "Autonomous bug-hunting loop — scientific method + autoresearch iteration. Finds ALL bugs, not just one. Use when: \"find all bugs\", \"hunt bugs\", \"debug this\", \"why is this failing\", \"investigate\"."
-argument-hint: "[Issue/Symptom description] [--max-iterations N] [--completion-promise TEXT]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
+description: Autonomous bug-hunting loop — scientific method + autoresearch iteration. Finds ALL bugs, not just one.
+argument-hint: "[--fix] [--scope <glob>] [--symptom <text>] [--severity <level>] [--technique <name>] [--iterations N]"
 ---
 
-## Workflow Preset: Debug
+EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
 
-This is a workflow preset for `/autoresearch`. It pre-fills the Workflow with scientific-method debugging steps.
+## Argument Parsing (do this FIRST)
 
-**Pre-filled Workflow:**
-```
-1. Read context and review known issues
-2. Reproduce the bug — confirm it exists with evidence
-3. Form hypothesis about root cause
-4. Design experiment to test hypothesis
-5. Run experiment and collect evidence
-6. If hypothesis confirmed → implement fix
-7. Verify fix resolves the issue without regressions
-8. Record findings in context
-```
+Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
 
-**Default config:**
-- Evaluator: on
-- Completion Promise: (ask user or skip)
+- `--fix` — if present, auto-switch to /autoresearch:fix after finding bugs
+- `--scope <glob>` or `Scope:` — file globs to investigate
+- `--symptom "<text>"` or `Symptom:` — description of what's broken
+- `--severity <level>` — minimum severity to report (critical/high/medium/low)
+- `--technique <name>` — force a specific investigation technique (binary-search, differential, minimal-reproduction, trace, pattern-search, working-backwards, rubber-duck)
+- `Iterations:` or `--iterations N` — integer for bounded mode (CRITICAL: run exactly N iterations then stop)
 
-Load `references/debug-workflow.md` for the full debugging protocol, then follow the main autoresearch setup flow from `commands/autoresearch.md` — Step 2 onwards — with the Workflow pre-filled above.
+If `Iterations: N` or `--iterations N` is found, set `max_iterations = N`. Track `current_iteration` starting at 0. After iteration N, print final summary and STOP.
 
-Parse $ARGUMENTS for the issue/symptom description as the Goal.
+All remaining text in $ARGUMENTS is additional context — use it to understand the problem but do not treat it as flags.
+
+## Execution
+
+1. Read the debug workflow: `.claude/skills/autoresearch/references/debug-workflow.md`
+2. If scope or symptom is missing — use `AskUserQuestion` with batched questions per debug-workflow.md
+3. Execute the 7-phase debug loop
+4. If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
+
+Stream all output live — never run in background.

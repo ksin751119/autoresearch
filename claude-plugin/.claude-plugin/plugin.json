@@ -1,7 +1,7 @@
 {
   "name": "autoresearch",
   "description": "General-purpose autonomous iteration engine for Claude Code. Multi-agent team (Coordinator, Research, Dev, Evaluator) loops on any task with optional metrics. 8 workflow presets: debug, fix, security, ship, scenario, predict, learn, plan.",
-  "version": "3.0.0",
+  "version": "3.1.1",
   "author": {
     "name": "Albert Lin",
     "url": "https://github.com/ksin751119"
