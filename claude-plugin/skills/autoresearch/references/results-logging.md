@@ -1,5 +1,7 @@
 # Results Logging Protocol
 
+> **Legacy (v2):** This TSV logging protocol is used in v2 metric mode (activated by inline `Metric:`, `Direction:`, `Verify:`, `Scope:` fields). In v3 YAML-config mode, the knowledge system (`knowledge-system.md`) replaces this as the primary context mechanism, though TSV logging can still be used alongside it.
+
 Track every iteration in a structured log. Enables pattern recognition and prevents repeating failed experiments.
 
 ## Setup & Initialization
