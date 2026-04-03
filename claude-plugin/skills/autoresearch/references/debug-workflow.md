@@ -5,6 +5,27 @@ Autonomous bug-hunting loop that applies the scientific method iteratively. Does
 **Core idea:** Hypothesize → Test → Prove/Disprove → Log → Repeat. Every finding needs code evidence. Every failed hypothesis teaches the next one.
 **Evaluator default:** `on` — challenges hypothesis experiment design and evidence quality.
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [PREREQUISITE: Interactive Setup (when invoked without flags)](#prerequisite-interactive-setup-when-invoked-without-flags)
+- [Architecture](#architecture)
+- [Phase 1: Gather — Symptoms & Context](#phase-1-gather--symptoms--context)
+- [Phase 2: Reconnaissance — Map the Error Surface](#phase-2-reconnaissance--map-the-error-surface)
+- [Phase 3: Hypothesize — Form Falsifiable Hypothesis](#phase-3-hypothesize--form-falsifiable-hypothesis)
+- [Phase 4: Test — Run Experiment](#phase-4-test--run-experiment)
+- [Phase 5: Classify — What Did We Learn?](#phase-5-classify--what-did-we-learn)
+- [Phase 6: Log — Record Everything](#phase-6-log--record-everything)
+- [Phase 7: Repeat — Next Investigation](#phase-7-repeat--next-investigation)
+- [Flags](#flags)
+- [Composite Metric](#composite-metric)
+- [Investigation Techniques Reference](#investigation-techniques-reference)
+- [Common Bug Patterns by Language](#common-bug-patterns-by-language)
+- [Domain-Specific Reference](#domain-specific-reference)
+- [Output Directory](#output-directory)
+- [Chaining with /autoresearch:fix](#chaining-with-autoresearchfix)
+
 ## Trigger
 
 - User invokes `/autoresearch:debug`

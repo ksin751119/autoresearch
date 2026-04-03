@@ -6,6 +6,23 @@ Autonomous security auditing using the autoresearch loop: STRIDE threat modeling
 **Evaluator default:** `off` — this workflow already uses 4 adversarial personas.
 **Templates:** See `references/security-output-templates.md` for all output file templates.
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [PREREQUISITE: Interactive Setup](#prerequisite-interactive-setup)
+- [Architecture](#architecture)
+- [Setup Phase — Threat Model Generation](#setup-phase--threat-model-generation)
+- [The Security Loop](#the-security-loop)
+- [OWASP Checks Reference](#owasp-checks-reference)
+- [Red-Team Adversarial Lenses](#red-team-adversarial-lenses)
+- [Strix-Inspired Patterns](#strix-inspired-patterns)
+- [Metric for the Loop](#metric-for-the-loop)
+- [Flags & Modes](#flags--modes)
+- [Error Recovery](#error-recovery)
+- [Anti-Patterns](#anti-patterns)
+- [Report Output — Structured Folder](#report-output--structured-folder)
+
 ## Trigger
 
 - User invokes `/autoresearch:security`

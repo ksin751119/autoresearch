@@ -2,6 +2,12 @@
 
 Interactive wizard for `/autoresearch:setup`. Takes a Goal, asks one question at a time, generates `.autoresearch/config.yaml`, then launches autoresearch.
 
+## Contents
+
+- [Input](#input)
+- [Question Flow](#question-flow)
+- [After All Questions](#after-all-questions)
+
 ## Input
 
 The user provides a Goal via $ARGUMENTS. Example: `/autoresearch:setup "最大化套利利潤"`

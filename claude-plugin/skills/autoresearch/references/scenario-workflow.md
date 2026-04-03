@@ -5,6 +5,28 @@ Scenario-driven use case generator that autonomously explores situations, edge c
 **Core idea:** Seed scenario in → Decompose into dimensions → Generate situations → Classify (new/duplicate/variant) → Expand edge cases → Log → Repeat. Every iteration explores one unexplored combination.
 **Evaluator default:** `off` — outputs scenarios, not code changes. No Verify/Guard flow to supplement.
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [PREREQUISITE: Interactive Setup (when invoked without scenario)](#prerequisite-interactive-setup-when-invoked-without-scenario)
+- [Architecture](#architecture)
+- [Inline Context Parsing Rules](#inline-context-parsing-rules)
+- [Cancel & Interruption Handling](#cancel--interruption-handling)
+- [Phase 1: Seed — Capture & Analyze Scenario](#phase-1-seed--capture--analyze-scenario)
+- [Phase 2: Decompose — Break Into Exploration Dimensions](#phase-2-decompose--break-into-exploration-dimensions)
+- [Phase 3: Generate — Create ONE New Situation](#phase-3-generate--create-one-new-situation)
+- [Phase 4: Classify — Evaluate & Deduplicate](#phase-4-classify--evaluate--deduplicate)
+- [Phase 5: Expand — Edge Cases & Stress Tests](#phase-5-expand--edge-cases--stress-tests)
+- [Phase 6: Log — Record Everything](#phase-6-log--record-everything)
+- [Phase 7: Repeat — Next Exploration Vector](#phase-7-repeat--next-exploration-vector)
+- [Flags](#flags)
+- [Composite Metric](#composite-metric)
+- [Output Directory](#output-directory)
+- [Domain-Specific Templates](#domain-specific-templates)
+- [Chaining Patterns](#chaining-patterns)
+- [What NOT to Do — Anti-Patterns](#what-not-to-do--anti-patterns)
+
 ## Trigger
 
 - User invokes `/autoresearch:scenario`

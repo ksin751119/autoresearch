@@ -5,6 +5,30 @@ Autonomous fix loop that takes a broken state and iteratively repairs it until e
 **Core idea:** Detect → Prioritize → Fix ONE thing → Verify → Keep/Revert → Repeat until zero errors.
 **Evaluator default:** `on` — catches lazy fixes (suppressions, any types, deleted tests).
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [Interactive Setup](#interactive-setup)
+- [Architecture](#architecture)
+- [Phase 1: Detect — What's Broken?](#phase-1-detect--whats-broken)
+- [Phase 2: Prioritize — Fix Order](#phase-2-prioritize--fix-order)
+- [Phase 3: Fix ONE Thing — Atomic Change](#phase-3-fix-one-thing--atomic-change)
+- [Phase 4: Commit — Before Verification](#phase-4-commit--before-verification)
+- [Phase 5: Verify — Did It Help?](#phase-5-verify--did-it-help)
+- [Phase 6: Guard — Did Anything Else Break?](#phase-6-guard--did-anything-else-break)
+- [Phase 7: Decide — Keep, Revert, or Rework](#phase-7-decide--keep-revert-or-rework)
+- [Phase 8: Log & Repeat](#phase-8-log--repeat)
+- [Flags](#flags)
+- [State Machine](#state-machine)
+- [Anti-Patterns — Never Do These](#anti-patterns--never-do-these)
+- [Compound Fix Detection](#compound-fix-detection)
+- [Rollback Protocol](#rollback-protocol)
+- [Escalation — After 3 Failed Attempts](#escalation--after-3-failed-attempts)
+- [Fix Score (bounded loops)](#fix-score-bounded-loops)
+- [Chaining Patterns](#chaining-patterns)
+- [Output Directory](#output-directory)
+
 ## Trigger
 
 - User invokes `/autoresearch:fix`

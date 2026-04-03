@@ -4,6 +4,14 @@ Convert a textual goal into a validated, ready-to-execute autoresearch configura
 
 **Output:** A complete `/autoresearch` invocation with Scope, Metric, Direction, and Verify — all validated before launch.
 
+## Contents
+
+- [Trigger](#trigger)
+- [Workflow](#workflow)
+- [Metric Suggestion Database](#metric-suggestion-database)
+- [Error Recovery](#error-recovery)
+- [Anti-Patterns](#anti-patterns)
+
 ## Trigger
 
 - User invokes `/autoresearch:plan`

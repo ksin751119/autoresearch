@@ -5,6 +5,28 @@ Multi-persona swarm prediction that pre-analyzes code from multiple expert persp
 **Core idea:** Read code → Build knowledge files → Generate personas → Independent analysis → Debate → Consensus → Report → Optional chain handoff. Every finding needs file:line evidence. Every prediction gets confidence scoring.
 **Evaluator default:** `off` — this workflow already uses multi-persona swarm with debate and anti-herd detection.
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [PREREQUISITE: Interactive Setup (when invoked without flags)](#prerequisite-interactive-setup-when-invoked-without-flags)
+- [Inline Context Parsing Rules](#inline-context-parsing-rules)
+- [Architecture](#architecture)
+- [Phase 1: Setup — Configuration](#phase-1-setup--configuration)
+- [Phase 2: Reconnaissance — Build Knowledge Files](#phase-2-reconnaissance--build-knowledge-files)
+- [Phase 3: Persona Generation](#phase-3-persona-generation)
+- [Phase 4: Independent Analysis](#phase-4-independent-analysis)
+- [Phase 5: Debate — Structured Cross-Examination](#phase-5-debate--structured-cross-examination)
+- [Phase 6: Consensus — Synthesizer Aggregation](#phase-6-consensus--synthesizer-aggregation)
+- [Phase 7: Report — Generate Output Files](#phase-7-report--generate-output-files)
+- [Phase 8: Handoff — Chain to Downstream](#phase-8-handoff--chain-to-downstream)
+- [Safety](#safety)
+- [Flags](#flags)
+- [Composite Metric](#composite-metric)
+- [Output Directory](#output-directory)
+- [Chaining Patterns](#chaining-patterns)
+- [What NOT to Do — Anti-Patterns](#what-not-to-do--anti-patterns)
+
 ## Trigger
 
 - User invokes `/autoresearch:predict`
