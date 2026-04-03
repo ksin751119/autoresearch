@@ -1,27 +1,37 @@
 ---
 name: autoresearch:predict
-description: "Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation. Use when: \"predict\", \"multi-perspective\", \"swarm analysis\", \"analyze from different angles\"."
-argument-hint: "[Scope/Goal] [--personas N] [--rounds N] [--depth LEVEL] [--chain TARGETS]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
+description: Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation. Zero external dependencies.
+argument-hint: "[goal/focus] [--scope <glob>] [--chain debug|security|fix|ship|scenario] [--depth shallow|standard|deep] [--personas N] [--rounds N] [--adversarial] [--budget <N>] [--fail-on <severity>] [--iterations N]"
 ---
 
-## Workflow Preset: Multi-Persona Prediction
+EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
 
-Pre-filled Workflow:
-```
-1. Read context and scan codebase — extract entities, map dependencies
-2. Generate 3-5 expert personas from codebase context
-3. Each persona analyzes code from their unique perspective
-4. Structured debate — 1-2 rounds of cross-examination with Devil's Advocate
-5. Synthesize consensus with confidence scores + anti-herd check
-6. Write findings to predict/ output folder
-7. Generate handoff.json for optional --chain to other tools
-8. Record findings in context
-```
+## Argument Parsing (do this FIRST)
 
-**Default config:**
-- Evaluator: off (prediction is analysis, not code changes)
+Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
 
-Load `references/predict-workflow.md` for the full prediction protocol, then follow `commands/autoresearch.md` Step 2+ with Workflow pre-filled.
+- `--scope <glob>` or `Scope:` — file globs to analyze
+- `--chain <targets>` or `Chain:` — comma-separated: debug,security,fix,ship,scenario
+- `--depth <level>` or `Depth:` — shallow (3 personas, 1 round), standard (5, 2), deep (8, 3)
+- `--personas N` — number of personas (3-8)
+- `--rounds N` — debate rounds (1-3)
+- `--adversarial` — use red team personas
+- `--budget <N>` — max total findings across all personas (default: 40)
+- `--fail-on <severity>` — CI/CD gate
+- `--incremental` — reuse existing knowledge files, update only changed files
+- `--goal <text>` or `Goal:` — focus area for analysis
+- `Iterations:` or `--iterations N` — integer for bounded mode (CRITICAL: run exactly N iterations then stop)
 
-Parse $ARGUMENTS for scope/goal as the Goal. Pass --personas, --rounds, --depth, --chain flags through to Notes.
+If `Iterations: N` or `--iterations N` is found, set `max_iterations = N`. Track `current_iteration` starting at 0. After iteration N, print final summary and STOP.
+
+All remaining text not matching flags is the goal/focus description.
+
+## Execution
+
+1. Read the predict workflow: `.claude/skills/autoresearch/references/predict-workflow.md`
+2. If scope or goal is missing — use `AskUserQuestion` with batched questions per predict-workflow.md
+3. Execute the 8-phase predict workflow
+4. If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
+5. If `--chain` is set, hand off to each chained command sequentially
+
+Stream all output live — never run in background.

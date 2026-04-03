@@ -1,27 +1,32 @@
 ---
 name: autoresearch:security
-description: "Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas. Use when: \"security audit\", \"threat model\", \"find vulnerabilities\", \"OWASP\", \"STRIDE\", \"red-team\"."
-argument-hint: "[Scope/Focus description] [--max-iterations N] [--diff] [--fix] [--fail-on SEVERITY]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh:*)"]
+description: Autonomous security audit — STRIDE threat model + OWASP Top 10 + red-team with 4 adversarial personas
+argument-hint: "[--diff] [--fix] [--fail-on <severity>] [--scope <glob>] [--depth <level>] [--iterations N]"
 ---
 
-## Workflow Preset: Security Audit
+EXECUTE IMMEDIATELY — do not deliberate, do not ask clarifying questions before reading the protocol.
 
-Pre-filled Workflow:
-```
-1. Read context and scan codebase for tech stack, dependencies, configs
-2. Identify assets — data stores, auth systems, external services, user inputs
-3. Map trust boundaries — browser↔server, public↔auth, user↔admin
-4. Build STRIDE threat model for each trust boundary
-5. Map attack surface — entry points, data flows, abuse paths
-6. Test one vulnerability vector with code evidence
-7. Log finding with severity, OWASP category, and code reference
-8. Update context with findings and coverage progress
-```
+## Argument Parsing (do this FIRST)
 
-**Default config:**
-- Evaluator: off (security findings are self-evident with code evidence)
+Extract these from $ARGUMENTS — the user may provide extensive context alongside flags. Ignore prose and extract ONLY flags/config:
 
-Load `references/security-workflow.md` for the full security audit protocol, then follow `commands/autoresearch.md` Step 2+ with Workflow pre-filled.
+- `--diff` — only audit files changed since last audit
+- `--fix` — auto-fix confirmed Critical/High findings
+- `--fail-on <severity>` — exit non-zero for CI/CD gating (critical/high/medium)
+- `--scope <glob>` or `Scope:` — file globs to audit
+- `--depth <level>` or `Depth:` — shallow (5 iterations), standard (15), deep (30+)
+- `Focus:` — specific area to focus on (e.g., "authentication and authorization")
+- `Iterations:` or `--iterations N` — integer for bounded mode (CRITICAL: run exactly N iterations then stop)
 
-Parse $ARGUMENTS for scope/focus as the Goal. Pass --diff, --fix, --fail-on flags through to Notes.
+If `Iterations: N` or `--iterations N` is found, set `max_iterations = N`. Track `current_iteration` starting at 0. After iteration N, print final summary and STOP.
+
+All remaining text in $ARGUMENTS is additional context — use it to understand scope but do not treat it as flags.
+
+## Execution
+
+1. Read the security workflow: `.claude/skills/autoresearch/references/security-workflow.md`
+2. If scope is missing — use `AskUserQuestion` with batched questions per security-workflow.md
+3. Execute the 7-step security audit
+4. If bounded: after each iteration, check `current_iteration < max_iterations`. If not, STOP and print summary.
+
+Stream all output live — never run in background.
