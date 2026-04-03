@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Release script for autoresearch plugin.
-# Creates a release branch, bumps versions, prompts for doc review,
-# creates a detailed PR, and merges only after confirmation.
+# Bumps versions, commits directly to master, pushes, tags, and creates
+# a GitHub release.
 #
 # Usage: ./scripts/release.sh <version> [--title "Release title"]
 # Example: ./scripts/release.sh 1.7.0 --title "New Feature X"
@@ -37,7 +37,6 @@ fi
 # Strip leading 'v' if provided
 VERSION="${VERSION#v}"
 TAG="v${VERSION}"
-BRANCH="release/${VERSION}"
 PLUGIN_JSON="claude-plugin/.claude-plugin/plugin.json"
 MARKETPLACE_JSON=".claude-plugin/marketplace.json"
 
@@ -79,15 +78,10 @@ echo "=== autoresearch release ==="
 echo "  Current version: $CURRENT"
 echo "  New version:     $VERSION"
 echo "  Tag:             $TAG"
-echo "  Branch:          $BRANCH"
 echo ""
 
-# --- Create release branch ---
-echo "[1/7] Creating release branch: $BRANCH"
-git checkout -b "$BRANCH"
-
 # --- Bump version in plugin.json and marketplace.json ---
-echo "[2/7] Bumping versions: $CURRENT → $VERSION"
+echo "[1/5] Bumping versions: $CURRENT → $VERSION"
 for JSON_FILE in "$PLUGIN_JSON" "$MARKETPLACE_JSON"; do
   if [[ -f "$JSON_FILE" ]]; then
     echo "    Updating $JSON_FILE"
@@ -135,7 +129,7 @@ done
 
 # --- Sync distribution files from .claude/ to claude-plugin/ ---
 echo ""
-echo "[3/7] Syncing distribution files to claude-plugin/"
+echo "[2/5] Syncing distribution files to claude-plugin/"
 if [[ -d ".claude/commands/autoresearch" ]]; then
   cp .claude/commands/autoresearch.md claude-plugin/commands/autoresearch.md
   cp .claude/commands/autoresearch/*.md claude-plugin/commands/autoresearch/
@@ -154,7 +148,7 @@ fi
 
 # --- Doc review prompt ---
 echo ""
-echo "[4/7] Documentation review"
+echo "[3/5] Documentation review"
 echo "────────────────────────────────────────"
 echo "  Before continuing, review these files for accuracy:"
 echo ""
@@ -188,7 +182,7 @@ fi
 
 # --- Commit all release changes ---
 echo ""
-echo "[5/7] Committing release changes"
+echo "[4/5] Committing release changes"
 git add -A
 if git diff --cached --quiet; then
   echo "    No changes to commit."
@@ -196,78 +190,10 @@ else
   git commit -m "chore: prepare release $TAG"
 fi
 
-# --- Push branch and create PR ---
+# --- Push to master, tag, and release ---
 echo ""
-echo "[6/7] Pushing branch and creating PR"
-git push -u origin "$BRANCH"
-
-# Build PR body with changelog
-CHANGELOG=""
-if [[ -n "$LAST_TAG" ]]; then
-  CHANGELOG=$(git log "$LAST_TAG"..HEAD --oneline --no-decorate | sed 's/^/- /')
-fi
-
-PR_TITLE="${TITLE:-"Release $TAG"}"
-if [[ ${#PR_TITLE} -gt 70 ]]; then
-  PR_TITLE="Release $TAG"
-fi
-
-PR_URL=$(gh pr create \
-  --base master \
-  --head "$BRANCH" \
-  --title "$PR_TITLE" \
-  --body "$(cat <<EOF
-## Release $TAG
-
-**Version bump:** \`$CURRENT\` → \`$VERSION\`
-
-### Changes since $LAST_TAG
-${CHANGELOG:-"No previous tag found — initial release."}
-
-### Checklist
-- [x] plugin.json version bumped to $VERSION
-- [x] marketplace.json version bumped to $VERSION
-- [x] README.md version badge updated
-- [x] guide/README.md version badge updated
-- [ ] README.md content reviewed for accuracy
-- [ ] guide/ reviewed — command guides, examples, chains
-- [ ] guide/scenario/ reviewed — scenario guides, domain examples
-- [ ] CONTRIBUTING.md reviewed — repo structure, file table
-- [ ] COMPARISON.md reviewed — subcommand count, feature table
-- [ ] All tests passing
-
-### Files changed
-$(git diff --name-only master..."$BRANCH" 2>/dev/null | sed 's/^/- /' || echo "- (branch just created)")
-EOF
-)")
-
-echo ""
-echo "  PR created: $PR_URL"
-echo ""
-
-# --- Wait for merge confirmation ---
-echo "[7/7] Waiting for merge confirmation"
-echo "────────────────────────────────────────"
-echo "  Review the PR: $PR_URL"
-echo ""
-read -rp "  Type 'merge' to merge, tag, and release (or 'abort' to cancel): " MERGE_RESPONSE
-
-if [[ "$MERGE_RESPONSE" != "merge" ]]; then
-  echo ""
-  echo "  Aborted. The PR remains open at: $PR_URL"
-  echo "  To merge later: gh pr merge $PR_URL --merge --delete-branch"
-  echo "  To clean up:    git checkout master && git branch -D $BRANCH"
-  exit 0
-fi
-
-# --- Merge, tag, and release ---
-echo ""
-echo "  Merging PR..."
-gh pr merge "$PR_URL" --merge --delete-branch
-
-echo "  Switching to master and pulling..."
-git checkout master
-git pull origin master --quiet
+echo "[5/5] Pushing to origin/master, tagging, and creating release"
+git push origin master
 
 echo "  Creating tag $TAG..."
 git tag -a "$TAG" -m "Release $TAG"
