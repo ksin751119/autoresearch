@@ -28,6 +28,18 @@ Based on context.md and the user's Workflow (if provided):
 - If analysis is needed → dispatch Research Agent
 - Review Research output for evidence quality before proceeding
 
+### 3.5 When Research MUST Be Re-dispatched
+
+In these situations, you MUST dispatch the Research Agent — do NOT analyze logs, errors, or output yourself:
+
+| Condition | Enforcement | Level |
+|-----------|-------------|-------|
+| Previous iteration outcome was DISCARD or REWORK | flow-check.sh + Pre-Dev Gate | **Hard** — script blocks exit if violated |
+| verify/guard reports a new error type (different from previous iteration) | Coordinator judgment | Soft — protocol guidance |
+| 2+ consecutive iterations with no KEEP | Coordinator judgment | Soft — protocol guidance |
+
+**Why this matters:** After a failed iteration, you already have a hypothesis that turned out wrong. Analyzing the same logs yourself risks confirmation bias — you'll see what supports your existing theory. A fresh Research Agent dispatch provides independent analysis.
+
 ### 4. Pre-Dev Gate + Dev (when implementation needed)
 
 **Before dispatching Dev, you MUST dispatch the Pre-Dev Gate agent:**
@@ -38,6 +50,8 @@ spawn Pre-Dev Gate with:
   - Workflow steps + current step + last completed step
   - Notes constraints
   - Whether Research was done this iteration
+  - Previous outcome: KEEP / DISCARD / REWORK / null (from previous iteration)
+  - Research summary: analysis summary if Research was dispatched this iteration (null otherwise)
 ```
 
 See `references/pre-dev-gate-protocol.md`.
@@ -65,6 +79,8 @@ spawn Evaluator Agent with:
   - Goal: user's goal
   - Notes: user's constraints
   - Previous critique: if this is a rework attempt
+  - context.md: current .autoresearch/context.md content
+  - knowledge.md: current .autoresearch/knowledge.md content
 ```
 
 Handle Evaluator output:
@@ -79,8 +95,9 @@ You MUST explicitly declare one of:
 | Condition | Action |
 |-----------|--------|
 | Evaluator pass (or off) + guard pass + verify improved | **KEEP** — commit stands |
-| Evaluator fail + rework < max_rework | **REWORK** — git revert, re-dispatch Dev with critique |
-| Evaluator fail + rework >= max_rework | **DISCARD** — git revert, note in context.md |
+| Evaluator fail + severity critical/major + rework < max_rework | **REWORK** — git revert, re-dispatch Dev with critique |
+| Evaluator fail + severity critical/major + rework >= max_rework | **DISCARD** — git revert, note in context.md |
+| Evaluator fail + severity minor | Should not happen (minor cannot fail). Treat as **KEEP** + log warning |
 | Guard fail | **DISCARD** — git revert immediately |
 | Verify worse (if metric mode) | **DISCARD** — git revert |
 | No changes made | **No-op** — note in context.md |
@@ -134,13 +151,22 @@ Do NOT:
 
 ## Superpowers Integration (Auto-Resolve Mode)
 
-When autoresearch is active, use superpowers skills in auto-resolve mode:
-- **brainstorming:** Select best approach yourself, no interactive gate
-- **writing-plans:** Write and approve plans yourself
-- **executing-plans:** Execute autonomously
-- **systematic-debugging:** Follow protocol autonomously
+When autoresearch is active, superpowers skills run in auto-resolve mode. But auto-resolve has a defined scope:
 
-Never wait for user approval during the loop. You are the autonomous decision-maker.
+**Auto-resolve applies to (human preference choices):**
+- brainstorming 方案選擇 — select best approach yourself
+- writing-plans plan approval — review and approve plans yourself
+- executing-plans 進度確認 — decide to continue yourself
+- systematic-debugging 方向選擇 — choose direction yourself
+
+**Auto-resolve does NOT apply to (quality/process gates):**
+- Pre-Dev Gate BLOCK — mandatory compliance, execute the corrective action
+- Post-iteration Review FAIL — must fix issues before continuing
+- Evaluator fail verdict — must REWORK or DISCARD per decision logic
+
+**Principle:** Auto-resolve skips "human preference choices." It never skips "quality/process gates."
+
+Never wait for user approval on preference choices during the loop. Always comply with quality gate verdicts.
 
 ## Completion Promise
 
