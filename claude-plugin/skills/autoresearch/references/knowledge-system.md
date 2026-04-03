@@ -52,7 +52,7 @@ What to focus on in the next iteration and why.
 ### Update Rules
 
 1. **Update at iteration END only** — not during the iteration
-2. **`Completed Step: N`** — always update N to the workflow step completed this iteration (stop-hook reads this for step-skip detection)
+2. **`Completed Step: N`** — update N to the last workflow step number completed this iteration (e.g., `Completed Step: 3` after completing step 3); stop-hook reads this for step-skip detection
 3. **Resolved issues:** move from Active to Resolved when fixed
 4. **Resolved cap:** keep only the 5 most recent resolved items; remove older ones
 5. **Size limit:** keep total under ~1000 words. Summarize aggressively.
