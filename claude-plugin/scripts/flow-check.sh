@@ -170,7 +170,7 @@ check_iteration_audit() {
   evaluator=$(parse_field "$state_file" "evaluator")
   if [[ "$commit_count" -gt 0 ]] && [[ "$evaluator" == "on" ]]; then
     local eval_mentions
-    eval_mentions=$(grep -ci 'evaluator' "$transcript_path" 2>/dev/null || echo "0")
+    eval_mentions=$(grep -ci 'evaluator' "$transcript_path" 2>/dev/null; true)
     if [[ "$eval_mentions" -lt 2 ]]; then
       errors+="evaluator=on but no Evaluator dispatch detected in transcript\n"
     fi
@@ -179,7 +179,7 @@ check_iteration_audit() {
   # ⑤ If commits exist → transcript must have KEEP/DISCARD/REWORK
   if [[ "$commit_count" -gt 0 ]]; then
     local outcome_declared
-    outcome_declared=$(grep -cE '(KEEP|DISCARD|REWORK)' "$transcript_path" 2>/dev/null || echo "0")
+    outcome_declared=$(grep -cE '(KEEP|DISCARD|REWORK)' "$transcript_path" 2>/dev/null; true)
     if [[ "$outcome_declared" -lt 1 ]]; then
       errors+="no KEEP/DISCARD/REWORK outcome declared in transcript\n"
     fi
@@ -188,7 +188,7 @@ check_iteration_audit() {
   # ⑥ If commits exist → transcript must have Dev Agent dispatch
   if [[ "$commit_count" -gt 0 ]]; then
     local dev_mentions
-    dev_mentions=$(grep -ci 'dev.agent\|Dev Agent\|DISPATCH_DEV' "$transcript_path" 2>/dev/null || echo "0")
+    dev_mentions=$(grep -ci 'dev.agent\|Dev Agent\|DISPATCH_DEV' "$transcript_path" 2>/dev/null; true)
     if [[ "$dev_mentions" -lt 1 ]]; then
       errors+="code committed but no Dev Agent dispatch detected — Coordinator must not write code directly\n"
     fi
@@ -197,7 +197,7 @@ check_iteration_audit() {
   # ⑦ If commits exist → transcript must have Pre-Dev Gate dispatch
   if [[ "$commit_count" -gt 0 ]]; then
     local gate_mentions
-    gate_mentions=$(grep -ci 'pre-dev.*gate\|Pre-Dev Gate' "$transcript_path" 2>/dev/null || echo "0")
+    gate_mentions=$(grep -ci 'pre-dev.*gate\|Pre-Dev Gate' "$transcript_path" 2>/dev/null; true)
     if [[ "$gate_mentions" -lt 1 ]]; then
       errors+="code committed but no Pre-Dev Gate dispatch detected\n"
     fi
@@ -222,7 +222,7 @@ check_iteration_audit() {
   previous_outcome=$(parse_field "$state_file" "previous_outcome")
   if [[ "$commit_count" -gt 0 ]] && { [[ "$previous_outcome" == "DISCARD" ]] || [[ "$previous_outcome" == "REWORK" ]]; }; then
     local research_mentions
-    research_mentions=$(grep -ciE 'Research.*(dispatch|spawn|Agent)' "$transcript_path" 2>/dev/null || echo "0")
+    research_mentions=$(grep -ciE '(dispatch|spawn|dispatching|spawning).{0,40}Research|Research.{0,40}(dispatch|spawn|Agent|dispatched|spawned)' "$transcript_path" 2>/dev/null; true)
     if [[ "$research_mentions" -lt 1 ]]; then
       errors+="previous iteration was ${previous_outcome} but no Research Agent dispatch detected — must re-analyze before Dev\n"
     fi
