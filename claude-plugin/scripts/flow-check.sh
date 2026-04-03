@@ -218,6 +218,7 @@ check_iteration_audit() {
   fi
 
   # ⑨ If previous_outcome was DISCARD or REWORK + commits exist → Research must be in transcript
+  #    Regex is bidirectional: catches both "dispatch Research" and "Research Agent" word orders
   local previous_outcome
   previous_outcome=$(parse_field "$state_file" "previous_outcome")
   if [[ "$commit_count" -gt 0 ]] && { [[ "$previous_outcome" == "DISCARD" ]] || [[ "$previous_outcome" == "REWORK" ]]; }; then
