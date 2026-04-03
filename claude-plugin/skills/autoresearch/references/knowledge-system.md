@@ -121,9 +121,9 @@ If `.autoresearch/knowledge.md` does not exist:
 (Findings will be added as the session progresses)
 ```
 
-### Flow Reviewer Check
+### Enforcement
 
-During UPDATE_KNOWLEDGE, the Flow Reviewer checks whether new entries were added to knowledge.md. If no entries were added, it reminds the Coordinator to review the iteration's findings for anything reusable.
+The stop-hook mechanical checks verify that knowledge.md was updated (file mtime check). The Post-iteration Review Agent verifies that context.md reflects the iteration's results. If either check fails, the hook blocks exit until the Coordinator fixes the issue.
 
 ## Layer 4: Memory (Cross-Session Persistence)
 
