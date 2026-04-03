@@ -69,7 +69,7 @@ All fields are set in `.autoresearch/config.yaml`. Only `goal` is required.
 |-------|------|---------|---------|
 | `goal` | string | **(required)** | What to achieve |
 | `workflow` | list | Coordinator decides | Ordered steps per iteration |
-| `notes` | list | none | Constraints for Flow Reviewer to enforce |
+| `notes` | list | none | Constraints for Pre-Dev Gate and Post-iteration Reviewer to enforce |
 | `max_iterations` | integer | unlimited | Count-based exit |
 | `completion_promise` | string | none | Semantic exit — output `<promise>TEXT</promise>` when true |
 | `guard` | string | none | Shell command — regression check (must pass every iteration) |
@@ -83,15 +83,17 @@ All fields are set in `.autoresearch/config.yaml`. Only `goal` is required.
 | Agent | Role | Protocol |
 |-------|------|----------|
 | **Coordinator** (you) | Orchestrate loop, dispatch agents, manage knowledge | `references/coordinator-protocol.md` |
-| **Flow Reviewer** | Pre-action gate, flow enforcement, deviation reporting | `references/flow-reviewer-protocol.md` |
+| **Pre-Dev Gate** | Lightweight workflow/notes check before Dev dispatch | `references/pre-dev-gate-protocol.md` |
 | **Research** | Analyze, investigate, diagnose | `references/research-agent-protocol.md` |
 | **Dev** | Implement, commit, verify | `references/dev-agent-protocol.md` |
 | **Evaluator** | Independent review, challenge assumptions | `references/evaluator-protocol.md` |
+| **Post-iteration Reviewer** | Review previous iteration's notes compliance + quality | `references/post-iteration-reviewer-protocol.md` |
 
 **Read your protocol file** at the start of the first iteration.
 
 **Trust boundaries:**
-- Flow Reviewer output → Coordinator must comply (High trust)
+- Pre-Dev Gate BLOCK → Coordinator must comply (High trust)
+- Post-iteration Reviewer FAIL → Coordinator must fix before continuing (High trust)
 - Research output → Coordinator verifies evidence exists
 - Dev output → Evaluator reviews independently
 - Evaluator output → Coordinator makes final decision
@@ -100,15 +102,18 @@ All fields are set in `.autoresearch/config.yaml`. Only `goal` is required.
 
 ```
 LOOP:
-  1. Read .autoresearch/context.md (mandatory — knowledge from past iterations)
-  2. Ask Flow Reviewer → Decide: what does this iteration do?
-  3. Ask Flow Reviewer → Dispatch: Research / Dev / Evaluator as needed
-  4. Ask Flow Reviewer → Review: check subagent outputs
-  5. Ask Flow Reviewer → Decide: Keep / Discard / Rework
-  6. Ask Flow Reviewer → Update: context.md + knowledge.md + memory
-  7. Exit → Hook re-injects → next iteration
+  1. Dispatch Post-iteration Reviewer (reviews PREVIOUS iteration — hook-injected, skipped on first)
+  2. Read .autoresearch/context.md (mandatory — knowledge from past iterations)
+  3. Decide + Research: what does this iteration do? Dispatch Research if analysis needed.
+  4. Pre-Dev Gate + Dev: validate workflow alignment, then dispatch Dev if implementation needed.
+  5. Evaluator: dispatch if Dev was used and evaluator=on.
+  6. Decide: Keep / Discard / Rework (mandatory if Dev was dispatched).
+  7. Update: context.md + knowledge.md + memory (mandatory).
+  8. Exit → Hook runs mechanical checks → blocks if failed → re-injects → next iteration.
 
-  Flow Reviewer is dispatched BEFORE every phase. See references/flow-reviewer-protocol.md.
+  Enforcement: stop-hook.sh validates mechanical checks (script-enforced).
+  Pre-Dev Gate validates workflow alignment (1 subagent, before irreversible action).
+  Post-iteration Reviewer validates notes compliance (1 subagent, after iteration).
 ```
 
 ## Knowledge System
@@ -132,13 +137,13 @@ Hook checks in order:
 
 ## Critical Rules
 
-1. **Ask Flow Reviewer first** — Dispatch Flow Reviewer before every phase transition
+1. **Pre-Dev Gate before Dev** — Dispatch Pre-Dev Gate agent before every Dev dispatch
 2. **Read context first** — Every iteration starts by reading `.autoresearch/context.md`
 3. **Dispatch, don't do** — Coordinator orchestrates, subagents execute
 4. **Trust but verify** — Review subagent output for evidence and quality
-5. **One change per iteration** — Atomic. Enforced by `flow-check.sh commit-count`
+5. **One change per iteration** — Atomic. Enforced by `stop-hook.sh` mechanical checks
 6. **Git is memory** — Commit before verify, `git revert` (not reset) on failure
-7. **Update knowledge** — End every iteration by updating context.md + knowledge.md
+7. **Update knowledge** — End every iteration by updating context.md + knowledge.md. Enforced by `stop-hook.sh`
 8. **Autonomous decisions** — Never ask user except for missing access/permissions
 
 ## Backward Compatibility
