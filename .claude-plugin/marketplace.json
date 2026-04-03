@@ -1,20 +1,20 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "autoresearch",
-  "version": "1.9.0",
-  "description": "Claude Autoresearch \u2014 autonomous goal-directed iteration for Claude Code. Inspired by Karpathy's autoresearch: constraint + mechanical metric + autonomous iteration = compounding gains.",
+  "version": "3.0.0",
+  "description": "Claude Autoresearch \u2014 autonomous goal-directed iteration for Claude Code. Multi-agent team loops on any task: modify, verify, keep/discard, repeat.",
   "owner": {
-    "name": "Udit Goenka",
-    "url": "https://github.com/uditgoenka"
+    "name": "Albert Lin",
+    "url": "https://github.com/ksin751119"
   },
   "plugins": [
     {
       "name": "autoresearch",
-      "description": "Autonomous improvement engine: /autoresearch runs an unlimited modify-verify-keep/discard loop. Includes /autoresearch:plan (goal wizard), /autoresearch:predict (multi-persona swarm prediction), /autoresearch:security (STRIDE + OWASP audit), /autoresearch:ship (multi-phase delivery workflow), /autoresearch:debug (autonomous bug hunter), /autoresearch:fix (autonomous error crusher), /autoresearch:scenario (edge case explorer), and /autoresearch:learn (autonomous documentation engine).",
-      "version": "1.9.0",
+      "description": "Autonomous iteration engine with multi-agent team (Coordinator, Research, Dev, Evaluator). 9 workflow presets: debug, fix, security, ship, scenario, predict, learn, plan, setup.",
+      "version": "3.0.0",
       "author": {
-        "name": "Udit Goenka",
-        "url": "https://github.com/uditgoenka"
+        "name": "Albert Lin",
+        "url": "https://github.com/ksin751119"
       },
       "source": "./claude-plugin",
       "category": "productivity"
