@@ -11,6 +11,8 @@ The Coordinator provides:
 - **Last completed step:** From context.md resolved items
 - **Notes:** From config.yaml (constraints)
 - **Research done this iteration:** Yes/No + summary of findings (if any)
+- **Previous outcome:** KEEP / DISCARD / REWORK / null (from state file — the outcome of the previous iteration)
+- **Research summary:** The Research Agent's analysis summary for this iteration (null if no Research dispatched)
 
 ## Checks
 
@@ -39,6 +41,13 @@ For each Note, check if the planned Dev task might violate it:
 
 Notes checks are WARNINGS (reminders to Dev), not BLOCKs. The Post-iteration Review Agent will do the actual enforcement after Dev commits.
 
+### C. Research Evidence Quality
+
+1. **Missing Research after failure:** Is `previous_outcome` DISCARD or REWORK, AND no Research was dispatched this iteration?
+   - YES → BLOCK (type: `missing-research-after-failure`): "上一輪 [DISCARD/REWORK]，必須 dispatch Research Agent 分析失敗原因再進行 Dev"
+2. **Weak Research evidence:** Research was dispatched but the summary lacks concrete evidence (no data points, no log references, no file paths, no measurements)?
+   - YES → WARNING: "Research 結論缺乏具體證據支撐 — Dev 應注意驗證假設"
+
 ## Output
 
 ### PASS
@@ -59,9 +68,18 @@ BLOCK
 - Correct action: DISPATCH_RESEARCH to analyze approaches, then DISPATCH_DEV in the same iteration.
 ```
 
+### BLOCK (missing research)
+
+```
+BLOCK
+- Type: missing-research-after-failure
+- Reason: 上一輪 DISCARD，本輪未 dispatch Research Agent
+- Correct action: dispatch Research Agent 分析失敗原因，再基於分析結果 dispatch Dev
+```
+
 ## Rules
 
-1. **Be fast.** This is a lightweight check, not a deep review. Don't read files or run commands.
+1. **Be efficient but thorough.** Read the Coordinator-provided context (Research summary, previous outcome) but don't independently explore the codebase or run commands.
 2. **BLOCK only for workflow violations.** Notes issues are warnings.
 3. **If no workflow is configured, always PASS** with notes reminders only.
 4. **Don't second-guess the Coordinator's technical decisions.** Only check process alignment.
