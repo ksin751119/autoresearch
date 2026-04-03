@@ -72,6 +72,8 @@ lines.append(f'verify: \"{verify}\"')
 lines.append(f'direction: {direction}')
 lines.append(f'evaluator: {evaluator}')
 lines.append(f'max_rework: {max_rework}')
+lines.append(f'commit_before: ""')
+lines.append(f'workflow_step: 0')
 
 if workflow:
     lines.append('workflow:')

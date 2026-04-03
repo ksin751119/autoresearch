@@ -90,6 +90,20 @@ TMPFILE=$(mktemp)
 sed "s/^iteration: .*/iteration: ${NEXT_ITERATION}/" "$STATE_FILE" > "$TMPFILE"
 mv "$TMPFILE" "$STATE_FILE"
 
+# Update commit_before to current HEAD for next iteration
+CURRENT_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "")
+if [[ -n "$CURRENT_HEAD" ]]; then
+  sed -i "s/^commit_before: .*/commit_before: \"${CURRENT_HEAD}\"/" "$STATE_FILE"
+fi
+
+# Update workflow_step from context.md if present
+if [[ -f ".autoresearch/context.md" ]]; then
+  COMPLETED_STEP=$(grep -oP 'Completed Step: \K\d+' .autoresearch/context.md 2>/dev/null | tail -1 || echo "")
+  if [[ -n "$COMPLETED_STEP" ]]; then
+    sed -i "s/^workflow_step: .*/workflow_step: ${COMPLETED_STEP}/" "$STATE_FILE"
+  fi
+fi
+
 # Build system message
 GOAL=$(parse_field "goal")
 SYS_MSG="🔬 Autoresearch iteration ${NEXT_ITERATION}"
