@@ -18,7 +18,7 @@ Checks:
   evaluator-format <output_file>         Verify Evaluator output is JSON with verdict field
   outcome-declared <flow_state_path>     Verify outcome_declared=true in state file
   promise-guard <verify_cmd> <direction> <baseline>  Run verify, check metric vs baseline
-  iteration-audit <state_file> <transcript>  Composite post-iteration check (8 validations)
+  iteration-audit <state_file> <transcript>  Composite post-iteration check (9 validations)
 EOF
   exit 0
 }
@@ -214,6 +214,17 @@ check_iteration_audit() {
       if [[ $((current_step - last_step)) -gt 1 ]]; then
         errors+="workflow step jumped from $last_step to $current_step (skipped step $((last_step + 1)))\n"
       fi
+    fi
+  fi
+
+  # ⑨ If previous_outcome was DISCARD or REWORK + commits exist → Research must be in transcript
+  local previous_outcome
+  previous_outcome=$(parse_field "$state_file" "previous_outcome")
+  if [[ "$commit_count" -gt 0 ]] && { [[ "$previous_outcome" == "DISCARD" ]] || [[ "$previous_outcome" == "REWORK" ]]; }; then
+    local research_mentions
+    research_mentions=$(grep -ciE 'Research.*(dispatch|spawn|Agent)' "$transcript_path" 2>/dev/null || echo "0")
+    if [[ "$research_mentions" -lt 1 ]]; then
+      errors+="previous iteration was ${previous_outcome} but no Research Agent dispatch detected — must re-analyze before Dev\n"
     fi
   fi
 
