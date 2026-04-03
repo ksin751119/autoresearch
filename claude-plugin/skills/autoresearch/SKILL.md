@@ -1,6 +1,6 @@
 ---
 name: autoresearch
-description: Autonomous Goal-directed Iteration. Loops autonomously with multi-agent team — Research, Dev, Evaluator. Works with ANY task.
+description: "Autonomous Goal-directed Iteration. Loops autonomously with multi-agent team — Research, Dev, Evaluator. Works with ANY task. Use when: (1) iterating autonomously on improvements, (2) running overnight optimization loops, (3) any task needing repeated modify-verify-keep/discard cycles. Triggers: \"iterate autonomously\", \"keep improving\", \"run overnight\", \"autonomous loop\", \"work autonomously\"."
 ---
 
 # Autoresearch — Autonomous Goal-directed Iteration
@@ -123,6 +123,16 @@ See `references/knowledge-system.md` for full protocol.
 - **L2: .autoresearch/context.md** — current state + next action, updated every iteration
 - **L3: .autoresearch/knowledge.md** — cumulative domain findings, organized by topic
 - **L4: Memory** — cross-session persistence for important discoveries
+
+## Reference Map
+
+| Category | Files | When to load |
+|----------|-------|-------------|
+| Agent protocols | coordinator, research, dev, evaluator, pre-dev-gate, post-iteration-reviewer | First iteration of any loop |
+| Workflow presets | debug, fix, security, ship, scenario, predict, learn, plan, setup | When specific sub-skill invoked |
+| Output templates | security-output, predict-knowledge, learn-output, debug-reference-material, ship-domain-tables | When creating output files |
+| Shared patterns | interactive-setup-pattern, core-principles, knowledge-system | As needed during setup or iteration |
+| Legacy (v2) | autonomous-loop-protocol, results-logging, ml-metric-examples | Only when v2 inline config detected |
 
 ## Exit Criteria
 
