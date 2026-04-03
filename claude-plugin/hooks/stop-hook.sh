@@ -69,6 +69,40 @@ if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
   fi
 fi
 
+# ── Mechanical checks (iteration audit) ──
+# Skip on iteration 0 (first iteration hasn't completed yet)
+if [[ "$ITERATION" -gt 0 ]]; then
+  PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+  FLOW_CHECK="${PLUGIN_ROOT}/scripts/flow-check.sh"
+  AUDIT_TRANSCRIPT_PATH=""
+  if command -v jq &>/dev/null; then
+    AUDIT_TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
+  fi
+
+  if [[ -x "$FLOW_CHECK" ]] && [[ -n "$AUDIT_TRANSCRIPT_PATH" ]]; then
+    set +e
+    AUDIT_RESULT=$("$FLOW_CHECK" iteration-audit "$STATE_FILE" "$AUDIT_TRANSCRIPT_PATH" 2>&1)
+    AUDIT_EXIT=$?
+    set -e
+    if [[ $AUDIT_EXIT -ne 0 ]] && [[ -n "$AUDIT_RESULT" ]]; then
+      # Block exit with fix instructions — don't increment iteration
+      FIX_PROMPT=$(printf "ITERATION AUDIT FAILED — fix these issues before continuing:\n\n%s\n\nAfter fixing all issues, simply stop again and the hook will re-check." "$AUDIT_RESULT")
+      FIX_SYS="⚠️ Autoresearch iteration ${ITERATION} — audit failed, fix required"
+      if command -v jq &>/dev/null; then
+        jq -n \
+          --arg decision "block" \
+          --arg reason "$FIX_PROMPT" \
+          --arg systemMessage "$FIX_SYS" \
+          '{"decision": $decision, "reason": $reason, "systemMessage": $systemMessage}'
+      else
+        ESCAPED=$(printf '%s' "$FIX_PROMPT" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null)
+        echo "{\"decision\": \"block\", \"reason\": ${ESCAPED}, \"systemMessage\": \"audit failed\"}"
+      fi
+      exit 0
+    fi
+  fi
+fi
+
 # Check max iterations
 NEXT_ITERATION=$((ITERATION + 1))
 if [[ "$MAX_ITERATIONS" -gt 0 ]] && [[ "$NEXT_ITERATION" -ge "$MAX_ITERATIONS" ]]; then
@@ -102,6 +136,15 @@ if [[ -f ".autoresearch/context.md" ]]; then
   if [[ -n "$COMPLETED_STEP" ]]; then
     sed -i "s/^workflow_step: .*/workflow_step: ${COMPLETED_STEP}/" "$STATE_FILE"
   fi
+fi
+
+# Prepend Post-iteration Review Agent dispatch instruction (skip for first iteration)
+COMMIT_BEFORE_VAL=$(parse_field "commit_before")
+if [[ "$ITERATION" -gt 0 ]]; then
+  REVIEW_INSTRUCTION="BEFORE starting this iteration, dispatch a Post-iteration Review Agent (subagent) to review the PREVIOUS iteration's work. Provide it: git diff ${COMMIT_BEFORE_VAL}..HEAD (if there were changes), config.yaml notes, and workflow step progress. See references/post-iteration-reviewer-protocol.md for the full protocol. If the reviewer returns FAIL, fix the issues (e.g., git revert) before proceeding with this iteration.
+
+"
+  PROMPT="${REVIEW_INSTRUCTION}${PROMPT}"
 fi
 
 # Build system message
