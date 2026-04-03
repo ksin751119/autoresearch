@@ -1,7 +1,6 @@
 ---
 name: autoresearch
 description: Autonomous Goal-directed Iteration. Loops autonomously with multi-agent team — Research, Dev, Evaluator. Works with ANY task.
-version: 3.0.0
 ---
 
 # Autoresearch — Autonomous Goal-directed Iteration
@@ -145,10 +144,6 @@ Hook checks in order:
 6. **Git is memory** — Commit before verify, `git revert` (not reset) on failure
 7. **Update knowledge** — End every iteration by updating context.md + knowledge.md. Enforced by `stop-hook.sh`
 8. **Autonomous decisions** — Never ask user except for missing access/permissions
-
-## Backward Compatibility
-
-If the prompt contains `Metric:`, `Direction:`, `Verify:`, and `Scope:` fields (v2 format), activate **metric mode**: use `references/autonomous-loop-protocol.md` for the 8-phase protocol and `references/results-logging.md` for TSV logging. These files are kept for this purpose.
 
 ## Sub-skills
 
