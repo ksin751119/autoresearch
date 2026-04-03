@@ -43,7 +43,7 @@ If you can't verify with a command, you can't iterate autonomously.
 
 **Anti-pattern:** "Looks better", "probably improved", "seems cleaner" → these KILL autonomous loops because there's no decision function.
 
-**Apply:** Define the `grep` command (or equivalent) that extracts your metric BEFORE starting. For ML-specific examples (accuracy, loss, F1, BLEU), see `references/ml-metric-examples.md`.
+**Apply:** Define the `grep` command (or equivalent) that extracts your metric BEFORE starting. Examples: `grep -oP 'val_loss: \K[\d.]+' log.txt` for loss, `grep -oP 'accuracy: \K[\d.]+' results.txt` for accuracy.
 
 ## 4. Verification Must Be Fast
 
@@ -76,13 +76,6 @@ Every successful change is committed. This enables:
 - **Human review** — researcher inspects agent's decision sequence
 
 **Apply:** Commit before verify. Revert on failure. Agent reads its own git history to inform next experiment.
-
-**Configuration:**
-```
-/autoresearch
-Git-Memory: enabled     # default — always on, reads git history every iteration
-Memory-Depth: 20        # number of past commits to review (default: 20)
-```
 
 **Key commands the agent runs every iteration:**
 ```bash
