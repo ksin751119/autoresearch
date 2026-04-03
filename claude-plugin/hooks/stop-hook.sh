@@ -70,15 +70,15 @@ if [[ "$COMPLETION_PROMISE" != "null" ]] && [[ -n "$COMPLETION_PROMISE" ]]; then
 fi
 
 # ── Mechanical checks (iteration audit) ──
+PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+FLOW_CHECK="${PLUGIN_ROOT}/scripts/flow-check.sh"
+AUDIT_TRANSCRIPT_PATH=""
+if command -v jq &>/dev/null; then
+  AUDIT_TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
+fi
+
 # Skip on iteration 0 (first iteration hasn't completed yet)
 if [[ "$ITERATION" -gt 0 ]]; then
-  PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-  FLOW_CHECK="${PLUGIN_ROOT}/scripts/flow-check.sh"
-  AUDIT_TRANSCRIPT_PATH=""
-  if command -v jq &>/dev/null; then
-    AUDIT_TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
-  fi
-
   if [[ -x "$FLOW_CHECK" ]] && [[ -n "$AUDIT_TRANSCRIPT_PATH" ]]; then
     set +e
     AUDIT_RESULT=$("$FLOW_CHECK" iteration-audit "$STATE_FILE" "$AUDIT_TRANSCRIPT_PATH" 2>&1)
@@ -138,6 +138,24 @@ if [[ -f ".autoresearch/context.md" ]]; then
   COMPLETED_STEP=$(grep -oP 'Completed Step: \K\d+' .autoresearch/context.md 2>/dev/null | tail -1 || echo "")
   if [[ -n "$COMPLETED_STEP" ]]; then
     sed -i "s/^workflow_step: .*/workflow_step: ${COMPLETED_STEP}/" "$STATE_FILE"
+  fi
+fi
+
+# Update previous_outcome from transcript for next iteration's checks
+if [[ -n "$AUDIT_TRANSCRIPT_PATH" ]] && [[ -f "$AUDIT_TRANSCRIPT_PATH" ]]; then
+  OUTCOME=$(grep -oE '(KEEP|DISCARD|REWORK)' "$AUDIT_TRANSCRIPT_PATH" | tail -1 || echo "")
+  if [[ -n "$OUTCOME" ]]; then
+    if grep -q '^previous_outcome:' "$STATE_FILE"; then
+      sed -i "s/^previous_outcome: .*/previous_outcome: ${OUTCOME}/" "$STATE_FILE"
+    else
+      # Insert after workflow_step line
+      sed -i "/^workflow_step:/a previous_outcome: ${OUTCOME}" "$STATE_FILE"
+    fi
+  fi
+else
+  # First iteration or no transcript — set to null
+  if ! grep -q '^previous_outcome:' "$STATE_FILE"; then
+    sed -i "/^workflow_step:/a previous_outcome: null" "$STATE_FILE" 2>/dev/null || true
   fi
 fi
 
