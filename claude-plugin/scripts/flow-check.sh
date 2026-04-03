@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # flow-check.sh — Mechanical flow validation checks for autoresearch
-# Called by Flow Reviewer agent at specific phases.
+# Called by stop-hook.sh for post-iteration enforcement.
 # Exit 0 = pass, Exit 1 = fail (stdout = violation description)
 
 COMMAND="${1:-}"

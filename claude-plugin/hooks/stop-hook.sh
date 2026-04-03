@@ -124,6 +124,9 @@ TMPFILE=$(mktemp)
 sed "s/^iteration: .*/iteration: ${NEXT_ITERATION}/" "$STATE_FILE" > "$TMPFILE"
 mv "$TMPFILE" "$STATE_FILE"
 
+# Save old commit_before for review instruction BEFORE updating
+OLD_COMMIT_BEFORE=$(parse_field "commit_before")
+
 # Update commit_before to current HEAD for next iteration
 CURRENT_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "")
 if [[ -n "$CURRENT_HEAD" ]]; then
@@ -139,7 +142,7 @@ if [[ -f ".autoresearch/context.md" ]]; then
 fi
 
 # Prepend Post-iteration Review Agent dispatch instruction (skip for first iteration)
-COMMIT_BEFORE_VAL=$(parse_field "commit_before")
+COMMIT_BEFORE_VAL="$OLD_COMMIT_BEFORE"
 if [[ "$ITERATION" -gt 0 ]]; then
   REVIEW_INSTRUCTION="BEFORE starting this iteration, dispatch a Post-iteration Review Agent (subagent) to review the PREVIOUS iteration's work. Provide it: git diff ${COMMIT_BEFORE_VAL}..HEAD (if there were changes), config.yaml notes, and workflow step progress. See references/post-iteration-reviewer-protocol.md for the full protocol. If the reviewer returns FAIL, fix the issues (e.g., git revert) before proceeding with this iteration.
 
