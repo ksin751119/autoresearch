@@ -54,8 +54,8 @@ For ALL commands, before launching:
    - Evaluator (optional — skip = on)
 3. Show Configuration Summary with ALL fields
 4. User confirms: [Launch / Edit / Cancel]
-5. Run `validate-config.sh` with provided fields
-6. Run `setup-loop.sh` to create state file and activate hook
+5. Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/validate-config.sh" --config ".autoresearch/config.yaml"`
+6. Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup-loop.sh" --config ".autoresearch/config.yaml"` to create state file and activate hook
 7. Begin first iteration
 
 **Never skip confirmation.** Even if all fields are provided inline.
