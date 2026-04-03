@@ -30,11 +30,14 @@ mkdir -p .claude
 SESSION_ID="${CLAUDE_CODE_SESSION_ID:-unknown}"
 STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-python3 -c "
+python3 - "$CONFIG" "$SESSION_ID" "$STARTED_AT" <<'PYEOF' > .claude/autoresearch-loop.local.md
 import yaml, sys
 
-with open('$CONFIG') as f:
+with open(sys.argv[1]) as f:
     cfg = yaml.safe_load(f)
+
+session_id = sys.argv[2]
+started_at = sys.argv[3]
 
 goal = cfg.get('goal', '')
 workflow = cfg.get('workflow', []) or []
@@ -53,43 +56,47 @@ elif evaluator is False:
 else:
     evaluator = str(evaluator)
 max_rework = cfg.get('max_rework', 2)
+
 if max_rework is None: max_rework = 2
+
+def esc(s):
+    return s.replace('\\', '\\\\').replace('"', '\\"')
 
 # Build YAML frontmatter
 lines = []
 lines.append('---')
 lines.append('active: true')
 lines.append('iteration: 0')
-lines.append('session_id: $SESSION_ID')
+lines.append(f'session_id: {session_id}')
 lines.append(f'max_iterations: {max_iter}')
-lines.append(f'goal: \"{goal}\"')
+lines.append(f'goal: "{esc(goal)}"')
 if promise:
-    lines.append(f'completion_promise: \"{promise}\"')
+    lines.append(f'completion_promise: "{esc(promise)}"')
 else:
     lines.append('completion_promise: null')
-lines.append(f'guard: \"{guard}\"')
-lines.append(f'verify: \"{verify}\"')
+lines.append(f'guard: "{esc(guard)}"')
+lines.append(f'verify: "{esc(verify)}"')
 lines.append(f'direction: {direction}')
 lines.append(f'evaluator: {evaluator}')
 lines.append(f'max_rework: {max_rework}')
-lines.append(f'commit_before: ""')
-lines.append(f'workflow_step: 0')
+lines.append('commit_before: ""')
+lines.append('workflow_step: 0')
 
 if workflow:
     lines.append('workflow:')
     for step in workflow:
-        lines.append(f'  - \"{step}\"')
+        lines.append(f'  - "{esc(step)}"')
 else:
     lines.append('workflow: []')
 
 if notes:
     lines.append('notes:')
     for note in notes:
-        lines.append(f'  - \"{note}\"')
+        lines.append(f'  - "{esc(note)}"')
 else:
     lines.append('notes: []')
 
-lines.append(f'started_at: \"$STARTED_AT\"')
+lines.append(f'started_at: "{started_at}"')
 lines.append('---')
 lines.append('')
 
@@ -113,26 +120,38 @@ if notes:
 lines.append('')
 
 print('\n'.join(lines))
-" > .claude/autoresearch-loop.local.md
+PYEOF
 
 # Read back for display
-GOAL=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('goal',''))")
-GUARD=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('guard','') or '')")
-VERIFY=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('verify','') or '')")
-DIRECTION=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('direction','') or '')")
-EVALUATOR=$(python3 -c "
-import yaml
-d = yaml.safe_load(open('$CONFIG'))
-v = d.get('evaluator', 'on')
-if v is True or v is None: print('on')
-elif v is False: print('off')
-else: print(str(v))
-")
-MAX_REWORK=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); v=d.get('max_rework',2); print(v if v is not None else 2)")
-MAX_ITERATIONS=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('max_iterations',0) or 0)")
-COMPLETION_PROMISE=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); print(d.get('completion_promise','') or '')")
-WORKFLOW_COUNT=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); w=d.get('workflow',[]); print(len(w) if w else 0)")
-NOTES_COUNT=$(python3 -c "import yaml; d=yaml.safe_load(open('$CONFIG')); n=d.get('notes',[]); print(len(n) if n else 0)")
+# SAFETY: python3 outputs KEY=shlex.quote(VALUE) — safe for eval
+eval "$(python3 - "$CONFIG" <<'PYEOF'
+import yaml, sys, shlex
+
+with open(sys.argv[1]) as f:
+    cfg = yaml.safe_load(f)
+
+def val(key, default=''):
+    v = cfg.get(key, default)
+    if v is None: return str(default)
+    if isinstance(v, bool): return 'on' if v else 'off'
+    return str(v)
+
+def count(key):
+    v = cfg.get(key, [])
+    return str(len(v) if isinstance(v, list) else 0)
+
+print(f"GOAL={shlex.quote(val('goal'))}")
+print(f"GUARD={shlex.quote(val('guard'))}")
+print(f"VERIFY={shlex.quote(val('verify'))}")
+print(f"DIRECTION={shlex.quote(val('direction'))}")
+print(f"EVALUATOR={shlex.quote(val('evaluator', 'on'))}")
+print(f"MAX_REWORK={shlex.quote(val('max_rework', '2'))}")
+print(f"MAX_ITERATIONS={shlex.quote(val('max_iterations', '0'))}")
+print(f"COMPLETION_PROMISE={shlex.quote(val('completion_promise'))}")
+print(f"WORKFLOW_COUNT={shlex.quote(count('workflow'))}")
+print(f"NOTES_COUNT={shlex.quote(count('notes'))}")
+PYEOF
+)"
 
 echo ""
 echo "🔬 Autoresearch loop activated!"
