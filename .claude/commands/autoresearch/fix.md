@@ -1,6 +1,6 @@
 ---
 name: autoresearch:fix
-description: Autonomous fix loop — iteratively repairs errors until zero remain. One fix per iteration, atomic, auto-reverted on failure.
+description: "Autonomous fix loop — iteratively repairs errors until zero remain. One fix per iteration, atomic, auto-reverted on failure. Use when: \"fix all errors\", \"make tests pass\", \"fix the build\", \"clean up errors\"."
 argument-hint: "[--target <cmd>] [--guard <cmd>] [--scope <glob>] [--category <type>] [--skip-lint] [--from-debug] [--iterations N]"
 ---
 

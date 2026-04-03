@@ -1,6 +1,6 @@
 ---
 name: autoresearch:predict
-description: Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation. Zero external dependencies.
+description: "Multi-persona swarm prediction — pre-analyze code from multiple expert perspectives using file-based knowledge representation. Use when: \"predict\", \"multi-perspective\", \"swarm analysis\", \"analyze from different angles\"."
 argument-hint: "[goal/focus] [--scope <glob>] [--chain debug|security|fix|ship|scenario] [--depth shallow|standard|deep] [--personas N] [--rounds N] [--adversarial] [--budget <N>] [--fail-on <severity>] [--iterations N]"
 ---
 

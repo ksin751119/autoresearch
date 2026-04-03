@@ -1,6 +1,6 @@
 ---
 name: autoresearch:scenario
-description: Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario using autonomous iteration.
+description: "Scenario-driven use case generator — explores situations, edge cases, and derivative scenarios from a seed scenario. Use when: \"explore scenarios\", \"generate use cases\", \"what could go wrong\", \"edge cases\", \"stress test\"."
 argument-hint: "[scenario description] [--scope <glob>] [--depth shallow|standard|deep] [--domain <type>] [--format <type>] [--focus <area>] [--iterations N]"
 ---
 

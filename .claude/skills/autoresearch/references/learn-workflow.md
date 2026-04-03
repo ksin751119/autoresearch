@@ -1,5 +1,23 @@
 # Learn Workflow — /autoresearch:learn
 
+## Contents
+
+- [Trigger](#trigger)
+- [Loop Support](#loop-support)
+- [PREREQUISITE: Interactive Setup](#prerequisite-interactive-setup-when-invoked-without-flags)
+- [Architecture](#architecture)
+- [Phase 1: Scout](#phase-1-scout--parallel-codebase-reconnaissance)
+- [Phase 2: Analyze](#phase-2-analyze--structure-detection--classification)
+- [Phase 3: Map](#phase-3-map--dynamic-doc-discovery--gap-analysis)
+- [Phase 4: Generate](#phase-4-generate--spawn-docs-manager-agent)
+- [Phase 5: Validate](#phase-5-validate--mechanical-verification)
+- [Phase 6: Fix](#phase-6-fix--validation-fix-loop-autoresearch-core)
+- [Phase 7: Finalize](#phase-7-finalize--inventory--summary)
+- [Phase 8: Log](#phase-8-log--record-results)
+- [Flags](#flags)
+- [Composite Metric](#composite-metric)
+- [Output & Reference](#output--reference)
+
 Autonomous codebase documentation engine. Scouts codebase structure, learns patterns and architecture, generates/updates comprehensive documentation — then validates and iteratively improves until docs are accurate.
 
 **Core idea:** Scout → Generate → Validate → Fix → Repeat until docs match codebase reality.
@@ -135,21 +153,7 @@ Output: `✓ Phase 2: Analyzed — [type] project, [N] existing docs, staleness:
 
 ### Init Mode — Determine Docs to Create
 
-**Always create:**
-- `docs/project-overview-pdr.md` — Project overview and PDR
-- `docs/codebase-summary.md` — Codebase summary with file inventory
-- `docs/code-standards.md` — Codebase structure and code standards
-- `docs/system-architecture.md` — System architecture
-- `README.md` at root (create or update, max 300 lines)
-
-**Conditional creation (based on project signals from Phase 2):**
-- `docs/deployment-guide.md` — if Dockerfile, CI config (`.github/workflows`, `.gitlab-ci.yml`), deploy scripts, or cloud config detected
-- `docs/design-guidelines.md` — if UI components, CSS/style files, or frontend framework detected
-- `docs/project-roadmap.md` — if project has milestones, issues, or TODO tracking
-- `docs/api-reference.md` — if API routes, controllers, resolvers, or OpenAPI/Swagger specs detected. Include endpoint catalog with method, path, description, request/response shapes
-- `docs/testing-guide.md` — if test directories (`tests/`, `__tests__/`, `spec/`), test config (jest.config, vitest.config, pytest.ini), or CI test steps detected. Document test strategy, how to run tests, coverage expectations, fixture patterns
-- `docs/configuration-guide.md` — if `.env.example`, `config/` directory, feature flags, or environment-specific configs detected. Document all env vars, config keys, and their purpose
-- `docs/changelog.md` — generate from `git log --oneline --no-merges -50` using conventional commit parsing. Group by type (feat, fix, docs, refactor). Only on init; update mode appends new entries
+Create 5 core docs (always) + conditional docs based on project signals. See `references/learn-output-templates.md` "Phase 3: Init Mode — Doc File Catalog" for the full list and detection rules.
 
 ### Update Mode — Read Existing Docs in Parallel
 
@@ -179,16 +183,7 @@ Output: `✓ Phase 2: Analyzed — [type] project, [N] existing docs, staleness:
 
 **Selective update:** If `--file <name>` provided → scope to that single file only, skip parallel reading.
 
-**Diff-based doc targeting (update mode optimization):**
-- After git-diff scoping identifies changed source files, map them to affected docs:
-  - `src/api/**` changes → prioritize `api-reference.md`, `system-architecture.md`
-  - `src/components/**` changes → prioritize `design-guidelines.md`
-  - `tests/**` changes → prioritize `testing-guide.md`
-  - `package.json` / dependency changes → prioritize `codebase-summary.md` (dependency section)
-  - Config file changes → prioritize `configuration-guide.md`
-  - New files in `src/` → prioritize `code-standards.md`, `system-architecture.md`
-- Instruct docs-manager to focus regeneration effort on mapped docs, light-touch others
-- This is advisory, not exclusive — all docs still get reviewed, mapped ones get deeper updates
+**Diff-based doc targeting:** Map changed source files to affected docs. See `references/learn-output-templates.md` "Phase 3: Update Mode — Diff-Based Doc Targeting" for the mapping table.
 
 ### Check Mode — Inventory Only
 
