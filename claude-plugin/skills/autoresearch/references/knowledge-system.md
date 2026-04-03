@@ -32,6 +32,7 @@ This is the ONLY context delivery mechanism guaranteed to reach the agent every 
 ```markdown
 # Autoresearch Context
 Last updated: iteration N | YYYY-MM-DD HH:MM
+Completed Step: N
 
 ## Current State
 Brief description of where things stand right now. 2-3 sentences max.
@@ -51,11 +52,12 @@ What to focus on in the next iteration and why.
 ### Update Rules
 
 1. **Update at iteration END only** — not during the iteration
-2. **Resolved issues:** move from Active to Resolved when fixed
-3. **Resolved cap:** keep only the 5 most recent resolved items; remove older ones
-4. **Size limit:** keep total under ~1000 words. Summarize aggressively.
-5. **Each entry is a summary** — not a detailed log. One line per item.
-6. **Reverted changes:** note commit hash in Active Issues — so future iterations can inspect via `git show <hash>`
+2. **`Completed Step: N`** — always update N to the workflow step completed this iteration (stop-hook reads this for step-skip detection)
+3. **Resolved issues:** move from Active to Resolved when fixed
+4. **Resolved cap:** keep only the 5 most recent resolved items; remove older ones
+5. **Size limit:** keep total under ~1000 words. Summarize aggressively.
+6. **Each entry is a summary** — not a detailed log. One line per item.
+7. **Reverted changes:** note commit hash in Active Issues — so future iterations can inspect via `git show <hash>`
 
 ### First Iteration Bootstrap
 
@@ -64,6 +66,7 @@ If `.autoresearch/context.md` does not exist, the Coordinator creates it:
 ```markdown
 # Autoresearch Context
 Last updated: iteration 1 | YYYY-MM-DD HH:MM
+Completed Step: 0
 
 ## Current State
 Initial state. [Describe what was observed on first read.]
